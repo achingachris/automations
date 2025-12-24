@@ -2,8 +2,12 @@ name: Daily Article Scrape
 
 on:
   schedule:
-    # 23:59 Africa/Nairobi == 20:59 UTC
-    - cron: "59 20 * * *"
+    # Africa/Nairobi times converted to UTC
+    - cron: "0 4 * * *"   # 07:00 EAT
+    - cron: "0 9 * * *"   # 12:00 EAT
+    - cron: "0 12 * * *"  # 15:00 EAT
+    - cron: "0 16 * * *"  # 19:00 EAT
+    - cron: "59 20 * * *" # 23:59 EAT
   workflow_dispatch:
 
 permissions:
