@@ -1,0 +1,25 @@
+name: Daily Article Scrape
+
+on:
+  schedule:
+    # 23:59 Africa/Nairobi == 20:59 UTC
+    - cron: "59 20 * * *"
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install feedparser
+
+      - name: Run scraper
+        run: python scripts/scrape_daily_articles.py
