@@ -132,14 +132,12 @@ os.makedirs(BASE_DIR, exist_ok=True)
 
 existing_urls = set()
 existing_rows = []
-existing_tag_counts = Counter()
 existing_content = ""
 
 if filepath.exists():
     existing_content = filepath.read_text(encoding="utf-8")
     existing_urls.update(URL_PATTERN.findall(existing_content))
     existing_rows = parse_existing_rows(existing_content)
-    existing_tag_counts.update(r["tag"] for r in existing_rows)
 
 new_entries = []
 
@@ -180,29 +178,66 @@ for feed_url in FEEDS:
 if not existing_rows and not new_entries:
     raise SystemExit(0)
 
-all_rows = existing_rows + new_entries
+# First run of the day: create the file with the initial table.
+if not existing_rows and new_entries:
+    tag_counts = Counter(r["tag"] for r in new_entries)
+    summary_line = f"Summary: {len(new_entries)} new articles today"
+    if tag_counts:
+        top_tag, top_tag_count = tag_counts.most_common(1)[0]
+        summary_line += f"; top tag {top_tag}: {top_tag_count}"
 
-tag_counts = existing_tag_counts + Counter(r["tag"] for r in new_entries)
-total_added = len(new_entries)
-summary_line = f"Summary: {total_added} new articles today, {len(all_rows)} total in file"
-if tag_counts:
-    top_tag, top_tag_count = tag_counts.most_common(1)[0]
-    summary_line += f"; top tag {top_tag}: {top_tag_count}"
+    lines = [
+        f"# Daily Tech Articles ({date_str})",
+        "",
+        summary_line,
+        "",
+        "| # | date | title/topic | url | tag | summary |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
 
-lines = [
-    f"# Daily Tech Articles ({date_str})",
-    "",
-    summary_line,
-    "",
-    "| # | date | title/topic | url | tag | summary |",
-    "| --- | --- | --- | --- | --- | --- |",
-]
+    for idx, row in enumerate(new_entries, start=1):
+        title = escape_pipes(row["title"])
+        summary = escape_pipes(row["summary"])
+        lines.append(
+            f"| {idx} | {row['date']} | {title} | {row['url']} | {row['tag']} | {summary} |"
+        )
 
-for idx, row in enumerate(all_rows, start=1):
-    title = escape_pipes(row["title"])
-    summary = escape_pipes(row["summary"])
-    lines.append(
-        f"| {idx} | {row['date']} | {title} | {row['url']} | {row['tag']} | {summary} |"
-    )
+    filepath.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    raise SystemExit(0)
 
-filepath.write_text("\n".join(lines) + "\n", encoding="utf-8")
+# Nothing new to add.
+if not new_entries:
+    raise SystemExit(0)
+
+# Subsequent run: append a new section with only the newly found entries.
+if new_entries:
+    offset = len(existing_rows)
+    tag_counts = Counter(r["tag"] for r in new_entries)
+    total_after = offset + len(new_entries)
+    run_summary = f"Summary: {len(new_entries)} new articles this run; {total_after} total in file"
+    if tag_counts:
+        top_tag, top_tag_count = tag_counts.most_common(1)[0]
+        run_summary += f"; top tag {top_tag}: {top_tag_count}"
+
+    now_str = datetime.now(LOCAL_TZ).strftime("%H:%M %Z")
+    section_lines = [
+        "",
+        f"## Additional articles ({now_str})",
+        "",
+        run_summary,
+        "",
+        "| # | date | title/topic | url | tag | summary |",
+        "| --- | --- | --- | --- | --- | --- |",
+    ]
+
+    for idx, row in enumerate(new_entries, start=offset + 1):
+        title = escape_pipes(row["title"])
+        summary = escape_pipes(row["summary"])
+        section_lines.append(
+            f"| {idx} | {row['date']} | {title} | {row['url']} | {row['tag']} | {summary} |"
+        )
+
+    with open(filepath, "a", encoding="utf-8") as f:
+        if existing_content and not existing_content.endswith("\n"):
+            f.write("\n")
+        f.write("\n".join(section_lines) + "\n")
