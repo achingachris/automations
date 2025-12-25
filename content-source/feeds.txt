@@ -1,0 +1,27 @@
+# All feeds (Medium tag feeds plus additional sources)
+https://medium.com/feed/tag/python
+https://medium.com/feed/tag/ai
+https://medium.com/feed/tag/artificial-intelligence
+https://medium.com/feed/tag/bots
+https://medium.com/feed/tag/automation
+https://medium.com/feed/tag/django
+https://medium.com/feed/tag/chatgpt
+https://medium.com/feed/tag/openai
+https://medium.com/feed/tag/llm
+https://medium.com/feed/tag/llms
+https://medium.com/feed/tag/data
+https://medium.com/feed/tag/data-science
+https://medium.com/feed/tag/data-analysis
+https://medium.com/feed/tag/open-source
+https://medium.com/feed/tag/claude
+https://medium.com/feed/tag/gemini
+https://medium.com/feed/tag/codex
+https://medium.com/feed/tag/grok
+https://medium.com/feed/tag/javascript
+https://medium.com/feed/tag/rust
+https://medium.com/feed/tag/go
+https://dev.to/feed/tag/python
+https://dev.to/feed/tag/ai
+https://hnrss.org/frontpage
+https://hnrss.org/newest?q=ai
+https://techcrunch.com/feed/

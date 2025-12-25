@@ -1,65 +1,49 @@
 import feedparser
-from datetime import datetime, timezone
 import os
+from datetime import datetime, timezone
 import re
 from collections import Counter
 from html import unescape
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-BASE_DIR = Path(__file__).resolve().parent.parent / "daily-articles"
+ROOT_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = ROOT_DIR / "daily-articles"
+CONTENT_DIR = ROOT_DIR / "content-source"
+TOPICS_FILE = CONTENT_DIR / "topics.txt"
+FEEDS_FILE = CONTENT_DIR / "feeds.txt"
 LOCAL_TZ = ZoneInfo("Africa/Nairobi")  # UTC+3
-
-TOPICS = [
-    "python",
-    "ai",
-    "artificial intelligence",
-    "bots",
-    "automation",
-    "django",
-    "chatgpt",
-    "openai",
-    "llm",
-    "llms",
-    "data",
-    "data science",
-    "data analysis",
-    "open source",
-    "open-source",
-    "claude",
-    "gemini",
-    "codex",
-    "grok",
-    "javascript",
-    "rust",
-    "go",
-]
 
 URL_PATTERN = re.compile(r"https?://[^\s|)]+")
 
-MEDIUM_TAGS = TOPICS  # Keep Medium tag feeds aligned with our topic list
-
-def slugify_tag(tag: str) -> str:
-    return tag.lower().replace(" ", "-")
-
-def build_medium_feeds():
-    feeds = []
-    seen = set()
-    for tag in MEDIUM_TAGS:
-        url = f"https://medium.com/feed/tag/{slugify_tag(tag)}"
-        if url in seen:
+def load_list(path: Path, fallback: list[str]) -> list[str]:
+    if not path.exists():
+        return fallback
+    items = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
             continue
-        seen.add(url)
-        feeds.append(url)
-    return feeds
+        items.append(line)
+    return items or fallback
 
-FEEDS = build_medium_feeds() + [
-    "https://dev.to/feed/tag/python",
-    "https://dev.to/feed/tag/ai",
-    "https://hnrss.org/frontpage",
-    "https://hnrss.org/newest?q=ai",
-    "https://techcrunch.com/feed/",
-]
+def dedupe_keep_order(items):
+    seen = set()
+    for item in items:
+        if item in seen:
+            continue
+        seen.add(item)
+        yield item
+
+CONTENT_DIR.mkdir(parents=True, exist_ok=True)
+topics = list(dedupe_keep_order(load_list(TOPICS_FILE, [])))
+feeds = list(dedupe_keep_order(load_list(FEEDS_FILE, [])))
+
+if not topics or not feeds:
+    raise SystemExit("Topics and feeds files must be present and non-empty.")
+
+TOPICS = topics
+FEEDS = feeds
 
 today = datetime.now(LOCAL_TZ).date()
 date_str = today.strftime("%d-%m-%Y")
@@ -196,10 +180,8 @@ if not existing_rows and new_entries:
     ]
 
     for idx, row in enumerate(new_entries, start=1):
-        title = escape_pipes(row["title"])
-        summary = escape_pipes(row["summary"])
         lines.append(
-            f"| {idx} | {row['date']} | {title} | {row['url']} | {row['tag']} | {summary} |"
+            f"| {idx} | {row['date']} | {row['title']} | {row['url']} | {row['tag']} | {row['summary']} |"
         )
 
     filepath.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -231,10 +213,8 @@ if new_entries:
     ]
 
     for idx, row in enumerate(new_entries, start=offset + 1):
-        title = escape_pipes(row["title"])
-        summary = escape_pipes(row["summary"])
         section_lines.append(
-            f"| {idx} | {row['date']} | {title} | {row['url']} | {row['tag']} | {summary} |"
+            f"| {idx} | {row['date']} | {row['title']} | {row['url']} | {row['tag']} | {row['summary']} |"
         )
 
     with open(filepath, "a", encoding="utf-8") as f:

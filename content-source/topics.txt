@@ -1,0 +1,23 @@
+# Topics used for filtering and Medium tag feeds
+python
+ai
+artificial intelligence
+bots
+automation
+django
+chatgpt
+openai
+llm
+llms
+data
+data science
+data analysis
+open source
+open-source
+claude
+gemini
+codex
+grok
+javascript
+rust
+go
