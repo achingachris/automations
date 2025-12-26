@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -27,6 +29,66 @@ jobs:
 
       - name: Install dependencies
         run: pip install feedparser
+
+      - name: Ensure content-source defaults
+        run: |
+          mkdir -p content-source
+          if [ ! -f content-source/topics.txt ]; then
+            cat > content-source/topics.txt <<'EOF'
+python
+ai
+artificial intelligence
+bots
+automation
+django
+chatgpt
+openai
+llm
+llms
+data
+data science
+data analysis
+open source
+open-source
+claude
+gemini
+codex
+grok
+javascript
+rust
+go
+EOF
+          fi
+          if [ ! -f content-source/feeds.txt ]; then
+            cat > content-source/feeds.txt <<'EOF'
+https://medium.com/feed/tag/python
+https://medium.com/feed/tag/ai
+https://medium.com/feed/tag/artificial-intelligence
+https://medium.com/feed/tag/bots
+https://medium.com/feed/tag/automation
+https://medium.com/feed/tag/django
+https://medium.com/feed/tag/chatgpt
+https://medium.com/feed/tag/openai
+https://medium.com/feed/tag/llm
+https://medium.com/feed/tag/llms
+https://medium.com/feed/tag/data
+https://medium.com/feed/tag/data-science
+https://medium.com/feed/tag/data-analysis
+https://medium.com/feed/tag/open-source
+https://medium.com/feed/tag/claude
+https://medium.com/feed/tag/gemini
+https://medium.com/feed/tag/codex
+https://medium.com/feed/tag/grok
+https://medium.com/feed/tag/javascript
+https://medium.com/feed/tag/rust
+https://medium.com/feed/tag/go
+https://dev.to/feed/tag/python
+https://dev.to/feed/tag/ai
+https://hnrss.org/frontpage
+https://hnrss.org/newest?q=ai
+https://techcrunch.com/feed/
+EOF
+          fi
 
       - name: Run scraper
         run: python scripts/scrape_daily_articles.py
@@ -39,6 +101,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add daily-articles
+          git add daily-articles content-source
           git commit -m "chore: update daily articles" || exit 0
           git push
