@@ -34,7 +34,6 @@ jobs:
       - name: Create daily placeholder file (EAT)
         run: |
           set -e
-
           DATE_EAT=$(date -u -d "+3 hours" +'%d-%m-%Y')
           FILE="daily-articles/${DATE_EAT}.md"
 
@@ -57,14 +56,19 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          if git diff --quiet; then
-            echo "No changes to commit"
-            exit 0
-          fi
+          set -e
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+          # Stage first so new files are included
           git add daily-articles content-source
+
+          # Check staged changes (includes new files)
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
           git commit -m "chore: update daily articles"
           git push
