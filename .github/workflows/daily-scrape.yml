@@ -30,6 +30,23 @@ jobs:
       - name: Install dependencies
         run: pip install feedparser
 
+      - name: Create daily placeholder file (EAT)
+        run: |
+          set -e
+          DATE_EAT=$(TZ=Africa/Nairobi date +'%d-%m-%Y')
+          mkdir -p daily-articles
+          FILE="daily-articles/${DATE_EAT}.md"
+          if [ ! -f "$FILE" ]; then
+            {
+              echo "# Daily Tech Articles (${DATE_EAT})"
+              echo
+              echo "Summary: 0 articles yet (placeholder created by CI)"
+              echo
+              echo "| # | date | title/topic | url | tag | summary |"
+              echo "| --- | --- | --- | --- | --- | --- |"
+            } > "$FILE"
+          fi
+
       - name: Run scraper
         run: python scripts/scrape_daily_articles.py
 

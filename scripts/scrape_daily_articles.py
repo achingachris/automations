@@ -1,11 +1,11 @@
 import feedparser
-import os
 from datetime import datetime, timezone
 import re
 from collections import Counter
 from html import unescape
 from pathlib import Path
 from zoneinfo import ZoneInfo
+import os
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 BASE_DIR = ROOT_DIR / "daily-articles"
