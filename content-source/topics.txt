@@ -1,4 +1,3 @@
-# Topics used for filtering and Medium tag feeds
 python
 ai
 artificial intelligence

@@ -1,4 +1,3 @@
-# All feeds (Medium tag feeds plus additional sources)
 https://medium.com/feed/tag/python
 https://medium.com/feed/tag/ai
 https://medium.com/feed/tag/artificial-intelligence
