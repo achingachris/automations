@@ -5,8 +5,8 @@ This repository is a small Python automation that scrapes RSS/Atom feeds and pub
 ## Project Structure & Module Organization
 
 - `scripts/scrape_daily_articles.py`: Main entrypoint (fetch feeds → filter by topics → write Markdown tables).
-- `config/topics.txt`: Topic keywords; also used to generate Medium tag feed URLs.
-- `config/feeds.txt`: Extra (non‑Medium) RSS/Atom feeds.
+- `content-source/topics.txt`: Topic keywords; also used to generate Medium tag feed URLs.
+- `content-source/feeds.txt`: Extra (non‑Medium) RSS/Atom feeds.
 - `daily-articles/`: Generated output, one file per day named `DD-MM-YYYY.md`.
 - `.github/workflows/daily-scrape.yml`: Scheduled GitHub Action that runs the scraper and commits changes.
 
@@ -22,7 +22,8 @@ Example local setup (recommended; don’t commit it):
 ## Coding Style & Naming Conventions
 
 - Python: 4‑space indentation, `snake_case` for functions/vars, `UPPER_SNAKE_CASE` for constants.
-- Keep diffs focused in `scripts/` and `config/`.
+- Follow DRY and KISS principles.
+- Keep diffs focused in `scripts/` and `content-source/`.
 - No formatter/linter is enforced today; keep changes readable and consistent with existing style.
 
 ## Testing Guidelines
@@ -35,9 +36,15 @@ There is no dedicated test suite yet.
 ## Commit & Pull Request Guidelines
 
 - Commit messages follow a simple “type: summary” convention (e.g., `chore: ...`, `refactor: ...`, `docs: ...`).
-- PRs should include: a clear description, relevant `config/*.txt` changes, and output diffs/screenshots if behavior changes.
+- PRs should include: a clear description, relevant `content-source/*.txt` changes, and output diffs/screenshots if behavior changes.
 - Keep CI green; the workflow runs on Python 3.11 and will overwrite `daily-articles/` on schedule.
+- Do not change `.github/workflows/daily-scrape.yml` unless explicitly asked.
+- Keep `README.md` up to date with current instructions.
 
 ## Automation Notes
 
 `daily-articles/` is typically updated by CI. Avoid manual edits unless you’re debugging formatting; they may be overwritten on the next run.
+
+## File Safety
+
+- Do not delete any file in this repo or on the desktop.
