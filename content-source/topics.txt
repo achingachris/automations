@@ -1,7 +1,5 @@
 python
-ai
 artificial intelligence
-bots
 automation
 django
 chatgpt
@@ -19,4 +17,3 @@ codex
 grok
 javascript
 rust
-go

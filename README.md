@@ -8,8 +8,8 @@ GitHub CI Status:
 ## Project Structure
 
 - `scripts/scrape_daily_articles.py`: Main entrypoint (fetch feeds -> filter by topics -> write Markdown tables).
-- `content-source/topics.txt`: Topic keywords; also used to generate Medium tag feed URLs.
-- `content-source/feeds.txt`: Extra (non-Medium) RSS/Atom feeds.
+- `content-source/topics.txt`: Topic keywords used for filtering.
+- `content-source/feeds.txt`: RSS/Atom feeds to scrape, including the approved Medium publications.
 - `daily-articles/`: Generated output, one file per day named `DD-MM-YYYY.md`.
 - `.github/workflows/daily-scrape.yml`: Scheduled GitHub Action that runs the scraper and commits changes.
 
