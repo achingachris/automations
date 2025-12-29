@@ -58,8 +58,8 @@ jobs:
         run: |
           set -e
 
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "C A - github bot"
+          git config user.email "achinga.chris@gmail.com"
 
           # Stage first so new files are included
           git add daily-articles content-source
