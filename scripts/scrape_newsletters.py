@@ -1,23 +1,18 @@
 import feedparser
 from datetime import datetime, timezone
 import re
-from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from html import unescape
 from pathlib import Path
 from zoneinfo import ZoneInfo
-import os
 import sys
 
 # ---- Configuration ----
-MAX_WORKERS = 10  # parallel feed fetches
-FEED_TIMEOUT = 30  # seconds
-
+MAX_WORKERS = 5
 ROOT_DIR = Path(__file__).resolve().parent.parent
-BASE_DIR = ROOT_DIR / "daily-articles"
+BASE_DIR = ROOT_DIR / "daily-newsletters"
 CONTENT_DIR = ROOT_DIR / "content-source"
-TOPICS_FILE = CONTENT_DIR / "topics.txt"
-FEEDS_FILE = CONTENT_DIR / "feeds.txt"
+NEWSLETTERS_FILE = CONTENT_DIR / "newsletters.txt"
 
 # ---- Timezone (CI-safe) ----
 try:
@@ -36,12 +31,12 @@ BASE_DIR.mkdir(parents=True, exist_ok=True)
 if not filepath.exists():
     filepath.write_text(
         "\n".join([
-            f"# Daily Tech Articles ({date_str})",
+            f"# Daily Newsletters ({date_str})",
             "",
-            "Summary: 0 articles yet (placeholder created by scraper)",
+            "Summary: 0 newsletters yet (placeholder created by scraper)",
             "",
-            "| # | date | title/topic | url | tag | summary |",
-            "| --- | --- | --- | --- | --- | --- |",
+            "| # | date | newsletter | title | url |",
+            "| --- | --- | --- | --- | --- |",
             ""
         ]),
         encoding="utf-8"
@@ -54,17 +49,16 @@ def load_list(path: Path) -> list[str]:
     if not path.exists():
         return []
     return [
-        line.strip().lower()
+        line.strip()
         for line in path.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.startswith("#")
     ]
 
-topics = load_list(TOPICS_FILE)
-feeds = load_list(FEEDS_FILE)
+newsletters = load_list(NEWSLETTERS_FILE)
 
 # ---- Soft exit (DO NOT CRASH CI) ----
-if not topics or not feeds:
-    print("Topics or feeds missing — placeholder retained, skipping scrape.")
+if not newsletters:
+    print("No newsletters configured — placeholder retained, skipping scrape.")
     sys.exit(0)
 
 def get_entry_date(entry):
@@ -79,6 +73,13 @@ def is_today(entry):
     d = get_entry_date(entry)
     return d.date() == today if d else False
 
+def is_this_week(entry):
+    """Check if entry is from the last 7 days."""
+    d = get_entry_date(entry)
+    if not d:
+        return False
+    return (today - d.date()).days <= 7
+
 def is_this_month(entry):
     """Check if entry is from the current month."""
     d = get_entry_date(entry)
@@ -86,22 +87,13 @@ def is_this_month(entry):
         return False
     return d.year == today.year and d.month == today.month
 
-def matches_topics(text):
-    text = text.lower()
-    return any(t in text for t in topics)
-
-def first_topic(text):
-    text = text.lower()
-    for t in topics:
-        if t in text:
-            return t
-    return "n/a"
-
-def clean_summary(raw, limit=220):
-    plain = re.sub(r"<[^>]+>", "", unescape(raw))
-    plain = plain.replace("Continue reading on Medium »", "")
-    plain = " ".join(plain.split())
-    return (plain[: limit - 1] + "…") if len(plain) > limit else plain
+def extract_newsletter_name(feed):
+    """Extract newsletter name from feed metadata."""
+    title = feed.feed.get("title", "")
+    # Clean up common suffixes
+    for suffix in [" - All Issues", " RSS", " Feed"]:
+        title = title.replace(suffix, "")
+    return title.strip() or "Unknown"
 
 def escape_pipes(text):
     return text.replace("|", "\\|")
@@ -112,11 +104,11 @@ def fetch_feed(feed_url):
         feed = feedparser.parse(feed_url, request_headers={'User-Agent': 'Mozilla/5.0'})
         if feed.bozo and not feed.entries:
             print(f"Warning: malformed feed {feed_url}: {feed.bozo_exception}")
-            return feed_url, []
-        return feed_url, feed.entries
+            return feed_url, None, []
+        return feed_url, feed, feed.entries
     except Exception as e:
         print(f"Error fetching {feed_url}: {e}")
-        return feed_url, []
+        return feed_url, None, []
 
 # ---- Read existing content ----
 existing_content = filepath.read_text(encoding="utf-8")
@@ -130,7 +122,7 @@ existing_rows = [
 # ---- Detect first run (no existing articles) ----
 first_run = len(existing_rows) == 0
 if first_run:
-    print("First run detected — fetching articles from this month")
+    print("First run detected — fetching newsletters from this month")
 
 new_entries = []
 feeds_ok = 0
@@ -138,20 +130,21 @@ feeds_failed = 0
 
 # ---- Fetch feeds in parallel ----
 with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-    futures = {executor.submit(fetch_feed, url): url for url in feeds}
+    futures = {executor.submit(fetch_feed, url): url for url in newsletters}
 
     for future in as_completed(futures):
-        feed_url, entries = future.result()
+        feed_url, feed, entries = future.result()
 
         if not entries:
             feeds_failed += 1
             continue
 
         feeds_ok += 1
+        newsletter_name = extract_newsletter_name(feed)
+
         for e in entries:
             url = e.get("link", "").strip()
             title = e.get("title", "").strip()
-            summary = e.get("summary", "").strip()
 
             if not url or url in existing_urls:
                 continue
@@ -164,55 +157,44 @@ with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
                 if not is_today(e):
                     continue
 
-            blob = f"{title} {summary} {url}"
-            if not matches_topics(blob):
-                continue
-
             entry_date = get_entry_date(e)
             entry_date_str = entry_date.strftime("%d-%m-%Y") if entry_date else date_str
 
             new_entries.append({
                 "date": entry_date_str,
+                "newsletter": escape_pipes(newsletter_name),
                 "title": escape_pipes(title),
                 "url": url,
-                "tag": first_topic(blob),
-                "summary": escape_pipes(clean_summary(summary)),
             })
 
             existing_urls.add(url)
 
-print(f"Fetched {feeds_ok}/{len(feeds)} feeds successfully ({feeds_failed} failed)")
+print(f"Fetched {feeds_ok}/{len(newsletters)} newsletter feeds successfully ({feeds_failed} failed)")
 
 # ---- Nothing new: stop safely ----
 if not new_entries:
-    print("No new articles found this month." if first_run else "No new articles found today.")
+    print("No new newsletters found this month." if first_run else "No new newsletters found today.")
     sys.exit(0)
 
 # ---- Append entries ----
 offset = len(existing_rows)
-tag_counts = Counter(r["tag"] for r in new_entries)
-
-summary = f"Summary: {len(new_entries)} new articles"
-if tag_counts:
-    top_tag, count = tag_counts.most_common(1)[0]
-    summary += f"; top tag {top_tag}: {count}"
 
 lines = [
     "",
-    f"## Additional articles ({datetime.now(LOCAL_TZ).strftime('%H:%M %Z')})",
+    f"## New newsletters ({datetime.now(LOCAL_TZ).strftime('%H:%M %Z')})",
     "",
-    summary,
+    f"Summary: {len(new_entries)} new newsletter issues",
     "",
-    "| # | date | title/topic | url | tag | summary |",
-    "| --- | --- | --- | --- | --- | --- |",
+    "| # | date | newsletter | title | url |",
+    "| --- | --- | --- | --- | --- |",
 ]
 
 for idx, row in enumerate(new_entries, start=offset + 1):
     lines.append(
-        f"| {idx} | {row['date']} | {row['title']} | {row['url']} | {row['tag']} | {row['summary']} |"
+        f"| {idx} | {row['date']} | {row['newsletter']} | {row['title']} | {row['url']} |"
     )
 
 with open(filepath, "a", encoding="utf-8") as f:
     f.write("\n".join(lines) + "\n")
 
-print(f"Added {len(new_entries)} articles to {filepath.name}")
+print(f"Added {len(new_entries)} newsletter issues to {filepath.name}")
