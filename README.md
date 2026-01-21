@@ -25,9 +25,8 @@ GitHub CI Status:
 
 ## Project Structure
 
-- `scripts/scrape_daily_articles.py`: Article scraper (fetch feeds -> filter by topics -> write Markdown tables).
+- `scripts/scrape_daily_articles.py`: Article scraper (fetch feeds -> write Markdown tables).
 - `scripts/scrape_newsletters.py`: Newsletter scraper (fetch newsletter feeds -> write Markdown tables).
-- `content-source/topics.txt`: Topic keywords used for filtering articles.
 - `content-source/feeds.txt`: RSS/Atom feeds for articles.
 - `content-source/newsletters.txt`: RSS/Atom feeds for newsletters.
 - `daily-articles/`: Generated article output, one file per day named `DD-MM-YYYY.md`.
@@ -37,8 +36,8 @@ GitHub CI Status:
 ## Usage
 
 ```bash
-# Install dependency
-python -m pip install feedparser
+# Install dependencies
+python -m pip install -r requirements.txt
 
 # Run article scraper
 python scripts/scrape_daily_articles.py
@@ -49,7 +48,7 @@ python scripts/scrape_newsletters.py
 
 Optional local setup (do not commit):
 ```bash
-python -m venv .venv && source .venv/bin/activate && pip install feedparser
+python -m venv .venv && source .venv/bin/activate && python -m pip install -r requirements.txt
 ```
 
 ## Notes

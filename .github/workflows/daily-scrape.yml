@@ -44,8 +44,8 @@ jobs:
               echo
               echo "Summary: 0 articles yet (placeholder created by CI)"
               echo
-              echo "| # | date | title/topic | url | tag | summary |"
-              echo "| --- | --- | --- | --- | --- | --- |"
+              echo "| # | date | title | url | summary |"
+              echo "| --- | --- | --- | --- | --- |"
             } > "$ARTICLES_FILE"
           fi
           test -s "$ARTICLES_FILE" || (echo "Articles placeholder not created" && exit 1)

@@ -1,10 +1,8 @@
-# Existing feeds
+# Django/Python blogs
 https://medium.com/feed/@kudzayibamhare
 https://adamj.eu/tech/atom.xml
 https://noumenal.es/posts/feed/
 https://veldakiara.substack.com/feed
-
-# Django/Python blogs
 https://www.better-simple.com/atom.xml
 https://sarahabd.com/feeds/rss.xml
 http://feeds.feedburner.com/JeffTriplett
@@ -23,3 +21,35 @@ https://kjaymiller.com/blog.rss
 https://softwarecrafts.co.uk/feed.xml
 https://addyosmani.com/feed.xml
 https://realpython.com/atom.xml
+https://simpleisbetterthancomplex.com/feed.xml
+https://testdriven.io/feed.xml
+https://photondesigner.com/feed.xml
+https://developer.mozilla.org/en-US/blog/rss.xml
+https://www.fullstackpython.com/feed
+
+# Django Official
+https://www.djangoproject.com/rss/weblog/
+
+# Social/Community
+https://fosstodon.org/@Django.rss
+
+# Podcasts
+https://feeds.simplecast.com/WpQaX_cs
+https://talkpython.fm/episodes/rss
+https://feeds.buzzsprout.com/2326928.rss
+https://runninginproduction.com/podcast/feed.xml
+
+# Videos
+https://djangotv.com/feeds/
+https://pyvideo.org/feeds/all.atom.xml
+
+# No RSS feed available (reference/static sites):
+# https://tutorial.djangogirls.org/ - static tutorial
+# https://ccbv.co.uk/ - Django CBV reference
+# https://www.cdrf.co/ - DRF class reference
+# https://www.djangotemplatetagsandfilters.com/ - template reference
+# https://www.dj4e.com/ - course site
+# https://cs50.harvard.edu/web/2020/ - course site
+# https://x.com/djangoproject - Twitter (no public RSS)
+# https://djangoriffs.com/ - redirects/defunct
+# https://www.pythonpodcast.com/ - feed URL hidden/broken

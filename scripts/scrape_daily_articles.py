@@ -1,12 +1,10 @@
 import feedparser
 from datetime import datetime, timezone
 import re
-from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from html import unescape
 from pathlib import Path
 from zoneinfo import ZoneInfo
-import os
 import sys
 
 # ---- Configuration ----
@@ -16,7 +14,6 @@ FEED_TIMEOUT = 30  # seconds
 ROOT_DIR = Path(__file__).resolve().parent.parent
 BASE_DIR = ROOT_DIR / "daily-articles"
 CONTENT_DIR = ROOT_DIR / "content-source"
-TOPICS_FILE = CONTENT_DIR / "topics.txt"
 FEEDS_FILE = CONTENT_DIR / "feeds.txt"
 
 # ---- Timezone (CI-safe) ----
@@ -40,8 +37,8 @@ if not filepath.exists():
             "",
             "Summary: 0 articles yet (placeholder created by scraper)",
             "",
-            "| # | date | title/topic | url | tag | summary |",
-            "| --- | --- | --- | --- | --- | --- |",
+            "| # | date | title | url | summary |",
+            "| --- | --- | --- | --- | --- |",
             ""
         ]),
         encoding="utf-8"
@@ -54,17 +51,16 @@ def load_list(path: Path) -> list[str]:
     if not path.exists():
         return []
     return [
-        line.strip().lower()
+        line.strip()
         for line in path.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.startswith("#")
     ]
 
-topics = load_list(TOPICS_FILE)
 feeds = load_list(FEEDS_FILE)
 
 # ---- Soft exit (DO NOT CRASH CI) ----
-if not topics or not feeds:
-    print("Topics or feeds missing — placeholder retained, skipping scrape.")
+if not feeds:
+    print("Feeds missing — placeholder retained, skipping scrape.")
     sys.exit(0)
 
 def get_entry_date(entry):
@@ -85,17 +81,6 @@ def is_this_month(entry):
     if not d:
         return False
     return d.year == today.year and d.month == today.month
-
-def matches_topics(text):
-    text = text.lower()
-    return any(t in text for t in topics)
-
-def first_topic(text):
-    text = text.lower()
-    for t in topics:
-        if t in text:
-            return t
-    return "n/a"
 
 def clean_summary(raw, limit=220):
     plain = re.sub(r"<[^>]+>", "", unescape(raw))
@@ -164,10 +149,6 @@ with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
                 if not is_today(e):
                     continue
 
-            blob = f"{title} {summary} {url}"
-            if not matches_topics(blob):
-                continue
-
             entry_date = get_entry_date(e)
             entry_date_str = entry_date.strftime("%d-%m-%Y") if entry_date else date_str
 
@@ -175,7 +156,6 @@ with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
                 "date": entry_date_str,
                 "title": escape_pipes(title),
                 "url": url,
-                "tag": first_topic(blob),
                 "summary": escape_pipes(clean_summary(summary)),
             })
 
@@ -190,26 +170,20 @@ if not new_entries:
 
 # ---- Append entries ----
 offset = len(existing_rows)
-tag_counts = Counter(r["tag"] for r in new_entries)
-
-summary = f"Summary: {len(new_entries)} new articles"
-if tag_counts:
-    top_tag, count = tag_counts.most_common(1)[0]
-    summary += f"; top tag {top_tag}: {count}"
 
 lines = [
     "",
     f"## Additional articles ({datetime.now(LOCAL_TZ).strftime('%H:%M %Z')})",
     "",
-    summary,
+    f"Summary: {len(new_entries)} new articles",
     "",
-    "| # | date | title/topic | url | tag | summary |",
-    "| --- | --- | --- | --- | --- | --- |",
+    "| # | date | title | url | summary |",
+    "| --- | --- | --- | --- | --- |",
 ]
 
 for idx, row in enumerate(new_entries, start=offset + 1):
     lines.append(
-        f"| {idx} | {row['date']} | {row['title']} | {row['url']} | {row['tag']} | {row['summary']} |"
+        f"| {idx} | {row['date']} | {row['title']} | {row['url']} | {row['summary']} |"
     )
 
 with open(filepath, "a", encoding="utf-8") as f:
