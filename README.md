@@ -6,9 +6,9 @@ Small Python automation that scrapes RSS/Atom feeds and publishes a daily Markdo
 <!-- STATS_START -->
 | Metric | Count |
 | --- | --- |
-| Total Articles | 5217 |
+| Total Articles | 5218 |
 | Total Newsletters | 21 |
-| Last Updated | 2026-01-23 15:01 EAT |
+| Last Updated | 2026-01-23 19:09 EAT |
 <!-- STATS_END -->
 
 ## Recent Updates
@@ -17,7 +17,7 @@ Small Python automation that scrapes RSS/Atom feeds and publishes a daily Markdo
 | Date | Articles | Newsletters |
 | --- | --- | --- |
 | Date | Articles | Newsletters |
-| 23-01-2026 | 53 | 7 |
+| 23-01-2026 | 54 | 7 |
 | Date | Articles | Newsletters |
 | 22-01-2026 | 53 | 6 |
 | 21-01-2026 | 84 | 8 |
