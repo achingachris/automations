@@ -58,6 +58,33 @@ def get_date_str(d: date | None = None) -> str:
     return d.strftime("%d-%m-%Y")
 
 
+def get_content_filepath(base_dir: Path, content_type: str, d: date | None = None) -> Path:
+    """
+    Get the filepath for content using hierarchical structure.
+
+    Structure: content/{content_type}/YYYY/MM/DD.md
+
+    Args:
+        base_dir: Root content directory (e.g., /path/to/content)
+        content_type: Type of content (articles, newsletters, social)
+        d: Date for the file (defaults to today)
+
+    Returns:
+        Path object for the content file
+    """
+    if d is None:
+        d = get_today()
+
+    return base_dir / content_type / str(d.year) / f"{d.month:02d}" / f"{d.day:02d}.md"
+
+
+def get_day_str(d: date | None = None) -> str:
+    """Format a date as DD string (day only)."""
+    if d is None:
+        d = get_today()
+    return f"{d.day:02d}"
+
+
 def load_list(path: Path) -> list[str]:
     """
     Load non-empty, non-comment lines from a text file.

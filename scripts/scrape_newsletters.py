@@ -4,6 +4,8 @@ Daily Newsletter Scraper
 
 Fetches RSS/Atom feeds from newsletters and compiles a daily Markdown digest.
 Uses Africa/Nairobi timezone for date filtering.
+
+Output structure: content/newsletters/YYYY/MM/DD.md
 """
 
 import sys
@@ -14,6 +16,7 @@ from shared import (
     LOCAL_TZ,
     get_today,
     get_date_str,
+    get_content_filepath,
     load_list,
     get_entry_date,
     is_today,
@@ -29,9 +32,9 @@ from shared import (
 MAX_WORKERS = 5  # Fewer workers for newsletters (typically fewer feeds)
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-BASE_DIR = ROOT_DIR / "daily-newsletters"
-CONTENT_DIR = ROOT_DIR / "content-source"
-NEWSLETTERS_FILE = CONTENT_DIR / "newsletters.txt"
+CONTENT_DIR = ROOT_DIR / "content"
+FEEDS_DIR = ROOT_DIR / "content-source"
+NEWSLETTERS_FILE = FEEDS_DIR / "newsletters.txt"
 
 # Table columns for newsletters
 COLUMNS = ["date", "newsletter", "title", "url"]
@@ -61,10 +64,10 @@ def main() -> int:
     """Main entry point for the newsletter scraper."""
     today = get_today()
     date_str = get_date_str(today)
-    filepath = BASE_DIR / f"{date_str}.md"
+    filepath = get_content_filepath(CONTENT_DIR, "newsletters", today)
 
     # Ensure output directory exists
-    BASE_DIR.mkdir(parents=True, exist_ok=True)
+    filepath.parent.mkdir(parents=True, exist_ok=True)
 
     # Create placeholder if file doesn't exist
     if not filepath.exists():
@@ -156,7 +159,7 @@ def main() -> int:
     with open(filepath, "a", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
-    logger.info(f"Added {len(new_entries)} newsletter issues to {filepath.name}")
+    logger.info(f"Added {len(new_entries)} newsletter issues to {filepath}")
     return 0
 
 

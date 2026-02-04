@@ -5,6 +5,8 @@ Daily Social Media Scraper
 Fetches RSS/Atom feeds from social media platforms (Mastodon, etc.)
 and compiles a daily Markdown digest of posts.
 Uses Africa/Nairobi timezone for date filtering.
+
+Output structure: content/social/YYYY/MM/DD.md
 """
 
 import sys
@@ -15,6 +17,7 @@ from shared import (
     LOCAL_TZ,
     get_today,
     get_date_str,
+    get_content_filepath,
     load_list,
     get_entry_date,
     is_today,
@@ -31,9 +34,9 @@ from shared import (
 MAX_WORKERS = 5  # Fewer workers for social feeds
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-BASE_DIR = ROOT_DIR / "daily-social"
-CONTENT_DIR = ROOT_DIR / "content-source"
-SOCIAL_FILE = CONTENT_DIR / "social.txt"
+CONTENT_DIR = ROOT_DIR / "content"
+FEEDS_DIR = ROOT_DIR / "content-source"
+SOCIAL_FILE = FEEDS_DIR / "social.txt"
 
 # Table columns for social posts
 COLUMNS = ["date", "source", "content", "url"]
@@ -78,10 +81,10 @@ def main() -> int:
     """Main entry point for the social media scraper."""
     today = get_today()
     date_str = get_date_str(today)
-    filepath = BASE_DIR / f"{date_str}.md"
+    filepath = get_content_filepath(CONTENT_DIR, "social", today)
 
     # Ensure output directory exists
-    BASE_DIR.mkdir(parents=True, exist_ok=True)
+    filepath.parent.mkdir(parents=True, exist_ok=True)
 
     # Create placeholder if file doesn't exist
     if not filepath.exists():
@@ -175,7 +178,7 @@ def main() -> int:
     with open(filepath, "a", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
-    logger.info(f"Added {len(new_entries)} social posts to {filepath.name}")
+    logger.info(f"Added {len(new_entries)} social posts to {filepath}")
     return 0
 
 
