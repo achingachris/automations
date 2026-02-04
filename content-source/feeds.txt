@@ -30,9 +30,6 @@ https://www.fullstackpython.com/feed
 # Django Official
 https://www.djangoproject.com/rss/weblog/
 
-# Social/Community
-https://fosstodon.org/@Django.rss
-
 # Podcasts
 https://feeds.simplecast.com/WpQaX_cs
 https://talkpython.fm/episodes/rss

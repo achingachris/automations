@@ -41,6 +41,7 @@ jobs:
           DATE_EAT=$(date +'%d-%m-%Y')
 
           # Articles placeholder
+          mkdir -p daily-articles
           ARTICLES_FILE="daily-articles/${DATE_EAT}.md"
           if [ ! -f "$ARTICLES_FILE" ]; then
             {
@@ -71,11 +72,30 @@ jobs:
           test -s "$NEWSLETTERS_FILE" || (echo "Newsletters placeholder not created" && exit 1)
           echo "Using newsletters file: $NEWSLETTERS_FILE"
 
+          # Social media placeholder
+          mkdir -p daily-social
+          SOCIAL_FILE="daily-social/${DATE_EAT}.md"
+          if [ ! -f "$SOCIAL_FILE" ]; then
+            {
+              echo "# Daily Social Media (${DATE_EAT})"
+              echo
+              echo "Summary: 0 posts yet (placeholder created by CI)"
+              echo
+              echo "| # | date | source | content | url |"
+              echo "| --- | --- | --- | --- | --- |"
+            } > "$SOCIAL_FILE"
+          fi
+          test -s "$SOCIAL_FILE" || (echo "Social placeholder not created" && exit 1)
+          echo "Using social file: $SOCIAL_FILE"
+
       - name: Run article scraper
         run: python scripts/scrape_daily_articles.py
 
       - name: Run newsletter scraper
         run: python scripts/scrape_newsletters.py
+
+      - name: Run social media scraper
+        run: python scripts/scrape_social.py
 
       - name: Update README stats
         run: |
@@ -84,33 +104,38 @@ jobs:
           DATE_EAT=$(date +'%d-%m-%Y')
           LAST_UPDATED=$(date +'%Y-%m-%d %H:%M EAT')
 
-          # Count total articles and newsletters
+          # Count totals
           TOTAL_ARTICLES=$(grep -rh "^|.*http" daily-articles/*.md 2>/dev/null | wc -l | tr -d ' ')
           TOTAL_NEWSLETTERS=$(grep -rh "^|.*http" daily-newsletters/*.md 2>/dev/null | wc -l | tr -d ' ')
+          TOTAL_SOCIAL=$(grep -rh "^|.*http" daily-social/*.md 2>/dev/null | wc -l | tr -d ' ')
 
-          # Count today's articles and newsletters
+          # Count today's entries
           TODAY_ARTICLES=0
           TODAY_NEWSLETTERS=0
+          TODAY_SOCIAL=0
           if [ -f "daily-articles/${DATE_EAT}.md" ]; then
             TODAY_ARTICLES=$(grep -c "^|.*http" "daily-articles/${DATE_EAT}.md" 2>/dev/null || echo 0)
           fi
           if [ -f "daily-newsletters/${DATE_EAT}.md" ]; then
             TODAY_NEWSLETTERS=$(grep -c "^|.*http" "daily-newsletters/${DATE_EAT}.md" 2>/dev/null || echo 0)
           fi
+          if [ -f "daily-social/${DATE_EAT}.md" ]; then
+            TODAY_SOCIAL=$(grep -c "^|.*http" "daily-social/${DATE_EAT}.md" 2>/dev/null || echo 0)
+          fi
 
           # Update total stats section
-          sed -i '/<!-- STATS_START -->/,/<!-- STATS_END -->/c\<!-- STATS_START -->\n| Metric | Count |\n| --- | --- |\n| Total Articles | '"$TOTAL_ARTICLES"' |\n| Total Newsletters | '"$TOTAL_NEWSLETTERS"' |\n| Last Updated | '"$LAST_UPDATED"' |\n<!-- STATS_END -->' README.md
+          sed -i '/<!-- STATS_START -->/,/<!-- STATS_END -->/c\<!-- STATS_START -->\n| Metric | Count |\n| --- | --- |\n| Total Articles | '"$TOTAL_ARTICLES"' |\n| Total Newsletters | '"$TOTAL_NEWSLETTERS"' |\n| Total Social Posts | '"$TOTAL_SOCIAL"' |\n| Last Updated | '"$LAST_UPDATED"' |\n<!-- STATS_END -->' README.md
 
           # Update daily log (keep last 10 entries)
-          NEW_ROW="| ${DATE_EAT} | ${TODAY_ARTICLES} | ${TODAY_NEWSLETTERS} |"
+          NEW_ROW="| ${DATE_EAT} | ${TODAY_ARTICLES} | ${TODAY_NEWSLETTERS} | ${TODAY_SOCIAL} |"
 
           # Check if today's entry already exists, if so update it, otherwise add new row
           if grep -q "| ${DATE_EAT} |" README.md; then
-            sed -i "s/| ${DATE_EAT} |.*|.*|/${NEW_ROW}/" README.md
+            sed -i "s/| ${DATE_EAT} |.*/${NEW_ROW}/" README.md
           else
             # Add new row after header, keep only last 10 entries
             sed -i '/<!-- DAILY_LOG_START -->/,/<!-- DAILY_LOG_END -->/{
-              /| --- | --- | --- |/a\'"${NEW_ROW}"'
+              /| --- | --- | --- | --- |/a\'"${NEW_ROW}"'
             }' README.md
 
             # Keep only last 10 data rows (plus header)
@@ -124,8 +149,8 @@ jobs:
             ' README.md > README.tmp && mv README.tmp README.md
           fi
 
-          echo "Updated README: $TOTAL_ARTICLES total articles, $TOTAL_NEWSLETTERS total newsletters"
-          echo "Today (${DATE_EAT}): $TODAY_ARTICLES articles, $TODAY_NEWSLETTERS newsletters"
+          echo "Updated README: $TOTAL_ARTICLES articles, $TOTAL_NEWSLETTERS newsletters, $TOTAL_SOCIAL social posts"
+          echo "Today (${DATE_EAT}): $TODAY_ARTICLES articles, $TODAY_NEWSLETTERS newsletters, $TODAY_SOCIAL social posts"
 
       - name: Pull latest changes before commit
         run: |
@@ -138,8 +163,8 @@ jobs:
           git config user.name "C A - github bot"
           git config user.email "achinga.chris@gmail.com"
 
-          # Stage first so new files are included
-          git add daily-articles daily-newsletters content-source README.md
+          # Stage all content directories
+          git add daily-articles daily-newsletters daily-social content-source README.md
 
           # Check staged changes (includes new files)
           if git diff --cached --quiet; then
@@ -147,7 +172,7 @@ jobs:
             exit 0
           fi
 
-          git commit -m "chore: update daily articles and newsletters"
+          git commit -m "chore: update daily articles, newsletters, and social posts"
 
           # Retry push with exponential backoff on failure
           for i in 1 2 3 4; do
