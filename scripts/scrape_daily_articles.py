@@ -24,7 +24,7 @@ from shared import (
     clean_summary,
     escape_pipes,
     fetch_feeds_parallel,
-    get_existing_urls,
+    get_all_existing_urls,
     count_existing_rows,
     create_placeholder_file,
 )
@@ -66,8 +66,8 @@ def main() -> int:
         logger.info("No feeds configured — placeholder retained, skipping scrape.")
         return 0
 
-    # Get existing URLs to avoid duplicates
-    existing_urls = get_existing_urls(filepath)
+    # Get existing URLs to avoid duplicates (checks all historical files)
+    existing_urls = get_all_existing_urls(CONTENT_DIR / "articles")
 
     # Detect first run (no existing articles)
     first_run = count_existing_rows(filepath) == 0

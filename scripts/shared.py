@@ -257,6 +257,17 @@ def get_existing_urls(filepath: Path) -> set[str]:
     return set(URL_PATTERN.findall(content))
 
 
+def get_all_existing_urls(content_dir: Path) -> set[str]:
+    """Extract all URLs from all .md files in a content directory (recursive)."""
+    all_urls = set()
+    if not content_dir.exists():
+        return all_urls
+    for md_file in content_dir.rglob("*.md"):
+        content = md_file.read_text(encoding="utf-8")
+        all_urls.update(URL_PATTERN.findall(content))
+    return all_urls
+
+
 def count_existing_rows(filepath: Path) -> int:
     """Count existing data rows in a Markdown table file."""
     if not filepath.exists():
