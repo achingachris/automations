@@ -13,6 +13,9 @@ on:
 permissions:
   contents: write
 
+env:
+  TZ: Africa/Nairobi
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
@@ -34,7 +37,8 @@ jobs:
       - name: Create daily placeholder files (EAT)
         run: |
           set -e
-          DATE_EAT=$(date -u -d "+3 hours" +'%d-%m-%Y')
+          # Use TZ environment variable for proper timezone handling
+          DATE_EAT=$(date +'%d-%m-%Y')
 
           # Articles placeholder
           ARTICLES_FILE="daily-articles/${DATE_EAT}.md"
@@ -77,8 +81,8 @@ jobs:
         run: |
           set -e
 
-          DATE_EAT=$(date -u -d "+3 hours" +'%d-%m-%Y')
-          LAST_UPDATED=$(date -u -d "+3 hours" +'%Y-%m-%d %H:%M EAT')
+          DATE_EAT=$(date +'%d-%m-%Y')
+          LAST_UPDATED=$(date +'%Y-%m-%d %H:%M EAT')
 
           # Count total articles and newsletters
           TOTAL_ARTICLES=$(grep -rh "^|.*http" daily-articles/*.md 2>/dev/null | wc -l | tr -d ' ')
@@ -123,6 +127,10 @@ jobs:
           echo "Updated README: $TOTAL_ARTICLES total articles, $TOTAL_NEWSLETTERS total newsletters"
           echo "Today (${DATE_EAT}): $TODAY_ARTICLES articles, $TODAY_NEWSLETTERS newsletters"
 
+      - name: Pull latest changes before commit
+        run: |
+          git pull --rebase origin ${{ github.ref_name }} || true
+
       - name: Commit and push changes
         run: |
           set -e
@@ -140,4 +148,15 @@ jobs:
           fi
 
           git commit -m "chore: update daily articles and newsletters"
-          git push
+
+          # Retry push with exponential backoff on failure
+          for i in 1 2 3 4; do
+            if git push; then
+              echo "Push successful"
+              exit 0
+            fi
+            echo "Push failed, retrying in $((2**i)) seconds..."
+            sleep $((2**i))
+          done
+          echo "Push failed after 4 retries"
+          exit 1

@@ -1,6 +1,5 @@
 # Newsletter RSS feeds
 https://django-news.com/issues.rss
-https://veldakiara.substack.com/feed
 https://pycoders.com/feed/PsawLTyI
 
 # No RSS available:
