@@ -13,6 +13,9 @@ on:
 permissions:
   contents: write
 
+env:
+  TZ: Africa/Nairobi
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
@@ -34,13 +37,20 @@ jobs:
       - name: Create daily placeholder files (EAT)
         run: |
           set -e
-          DATE_EAT=$(date -u -d "+3 hours" +'%d-%m-%Y')
+          # Use TZ environment variable for proper timezone handling
+          # Structure: content/{type}/YYYY/MM/DD.md
+          YEAR=$(date +'%Y')
+          MONTH=$(date +'%m')
+          DAY=$(date +'%d')
+          DATE_STR=$(date +'%d-%m-%Y')
 
           # Articles placeholder
-          ARTICLES_FILE="daily-articles/${DATE_EAT}.md"
+          ARTICLES_DIR="content/articles/${YEAR}/${MONTH}"
+          mkdir -p "$ARTICLES_DIR"
+          ARTICLES_FILE="${ARTICLES_DIR}/${DAY}.md"
           if [ ! -f "$ARTICLES_FILE" ]; then
             {
-              echo "# Daily Tech Articles (${DATE_EAT})"
+              echo "# Daily Tech Articles (${DATE_STR})"
               echo
               echo "Summary: 0 articles yet (placeholder created by CI)"
               echo
@@ -52,11 +62,12 @@ jobs:
           echo "Using articles file: $ARTICLES_FILE"
 
           # Newsletters placeholder
-          mkdir -p daily-newsletters
-          NEWSLETTERS_FILE="daily-newsletters/${DATE_EAT}.md"
+          NEWSLETTERS_DIR="content/newsletters/${YEAR}/${MONTH}"
+          mkdir -p "$NEWSLETTERS_DIR"
+          NEWSLETTERS_FILE="${NEWSLETTERS_DIR}/${DAY}.md"
           if [ ! -f "$NEWSLETTERS_FILE" ]; then
             {
-              echo "# Daily Newsletters (${DATE_EAT})"
+              echo "# Daily Newsletters (${DATE_STR})"
               echo
               echo "Summary: 0 newsletters yet (placeholder created by CI)"
               echo
@@ -67,46 +78,79 @@ jobs:
           test -s "$NEWSLETTERS_FILE" || (echo "Newsletters placeholder not created" && exit 1)
           echo "Using newsletters file: $NEWSLETTERS_FILE"
 
+          # Social media placeholder
+          SOCIAL_DIR="content/social/${YEAR}/${MONTH}"
+          mkdir -p "$SOCIAL_DIR"
+          SOCIAL_FILE="${SOCIAL_DIR}/${DAY}.md"
+          if [ ! -f "$SOCIAL_FILE" ]; then
+            {
+              echo "# Daily Social Media (${DATE_STR})"
+              echo
+              echo "Summary: 0 posts yet (placeholder created by CI)"
+              echo
+              echo "| # | date | source | content | url |"
+              echo "| --- | --- | --- | --- | --- |"
+            } > "$SOCIAL_FILE"
+          fi
+          test -s "$SOCIAL_FILE" || (echo "Social placeholder not created" && exit 1)
+          echo "Using social file: $SOCIAL_FILE"
+
       - name: Run article scraper
         run: python scripts/scrape_daily_articles.py
 
       - name: Run newsletter scraper
         run: python scripts/scrape_newsletters.py
 
+      - name: Run social media scraper
+        run: python scripts/scrape_social.py
+
       - name: Update README stats
         run: |
           set -e
 
-          DATE_EAT=$(date -u -d "+3 hours" +'%d-%m-%Y')
-          LAST_UPDATED=$(date -u -d "+3 hours" +'%Y-%m-%d %H:%M EAT')
+          YEAR=$(date +'%Y')
+          MONTH=$(date +'%m')
+          DAY=$(date +'%d')
+          DATE_STR=$(date +'%d-%m-%Y')
+          LAST_UPDATED=$(date +'%Y-%m-%d %H:%M EAT')
 
-          # Count total articles and newsletters
-          TOTAL_ARTICLES=$(grep -rh "^|.*http" daily-articles/*.md 2>/dev/null | wc -l | tr -d ' ')
-          TOTAL_NEWSLETTERS=$(grep -rh "^|.*http" daily-newsletters/*.md 2>/dev/null | wc -l | tr -d ' ')
+          # Count totals across all content
+          TOTAL_ARTICLES=$(find content/articles -name "*.md" -exec grep -h "^|.*http" {} \; 2>/dev/null | wc -l | tr -d ' ')
+          TOTAL_NEWSLETTERS=$(find content/newsletters -name "*.md" -exec grep -h "^|.*http" {} \; 2>/dev/null | wc -l | tr -d ' ')
+          TOTAL_SOCIAL=$(find content/social -name "*.md" -exec grep -h "^|.*http" {} \; 2>/dev/null | wc -l | tr -d ' ')
 
-          # Count today's articles and newsletters
+          # Count today's entries
           TODAY_ARTICLES=0
           TODAY_NEWSLETTERS=0
-          if [ -f "daily-articles/${DATE_EAT}.md" ]; then
-            TODAY_ARTICLES=$(grep -c "^|.*http" "daily-articles/${DATE_EAT}.md" 2>/dev/null || echo 0)
+          TODAY_SOCIAL=0
+
+          ARTICLES_FILE="content/articles/${YEAR}/${MONTH}/${DAY}.md"
+          NEWSLETTERS_FILE="content/newsletters/${YEAR}/${MONTH}/${DAY}.md"
+          SOCIAL_FILE="content/social/${YEAR}/${MONTH}/${DAY}.md"
+
+          if [ -f "$ARTICLES_FILE" ]; then
+            TODAY_ARTICLES=$(grep -c "^|.*http" "$ARTICLES_FILE" 2>/dev/null || echo 0)
           fi
-          if [ -f "daily-newsletters/${DATE_EAT}.md" ]; then
-            TODAY_NEWSLETTERS=$(grep -c "^|.*http" "daily-newsletters/${DATE_EAT}.md" 2>/dev/null || echo 0)
+          if [ -f "$NEWSLETTERS_FILE" ]; then
+            TODAY_NEWSLETTERS=$(grep -c "^|.*http" "$NEWSLETTERS_FILE" 2>/dev/null || echo 0)
+          fi
+          if [ -f "$SOCIAL_FILE" ]; then
+            TODAY_SOCIAL=$(grep -c "^|.*http" "$SOCIAL_FILE" 2>/dev/null || echo 0)
           fi
 
           # Update total stats section
-          sed -i '/<!-- STATS_START -->/,/<!-- STATS_END -->/c\<!-- STATS_START -->\n| Metric | Count |\n| --- | --- |\n| Total Articles | '"$TOTAL_ARTICLES"' |\n| Total Newsletters | '"$TOTAL_NEWSLETTERS"' |\n| Last Updated | '"$LAST_UPDATED"' |\n<!-- STATS_END -->' README.md
+          sed -i '/<!-- STATS_START -->/,/<!-- STATS_END -->/c\<!-- STATS_START -->\n| Metric | Count |\n| --- | --- |\n| Total Articles | '"$TOTAL_ARTICLES"' |\n| Total Newsletters | '"$TOTAL_NEWSLETTERS"' |\n| Total Social Posts | '"$TOTAL_SOCIAL"' |\n| Last Updated | '"$LAST_UPDATED"' |\n<!-- STATS_END -->' README.md
 
           # Update daily log (keep last 10 entries)
-          NEW_ROW="| ${DATE_EAT} | ${TODAY_ARTICLES} | ${TODAY_NEWSLETTERS} |"
+          NEW_ROW="| ${DATE_STR} | ${TODAY_ARTICLES} | ${TODAY_NEWSLETTERS} | ${TODAY_SOCIAL} |"
 
           # Check if today's entry already exists, if so update it, otherwise add new row
-          if grep -q "| ${DATE_EAT} |" README.md; then
-            sed -i "s/| ${DATE_EAT} |.*|.*|/${NEW_ROW}/" README.md
+          if grep -q "| ${DATE_STR} |" README.md; then
+            sed -i "s/| ${DATE_STR} |.*/${NEW_ROW}/" README.md
           else
             # Add new row after header, keep only last 10 entries
             sed -i '/<!-- DAILY_LOG_START -->/,/<!-- DAILY_LOG_END -->/{
-              /| --- | --- | --- |/a\'"${NEW_ROW}"'
+              /| --- | --- | --- | --- |/a\'"${NEW_ROW}"'
             }' README.md
 
             # Keep only last 10 data rows (plus header)
@@ -120,8 +164,12 @@ jobs:
             ' README.md > README.tmp && mv README.tmp README.md
           fi
 
-          echo "Updated README: $TOTAL_ARTICLES total articles, $TOTAL_NEWSLETTERS total newsletters"
-          echo "Today (${DATE_EAT}): $TODAY_ARTICLES articles, $TODAY_NEWSLETTERS newsletters"
+          echo "Updated README: $TOTAL_ARTICLES articles, $TOTAL_NEWSLETTERS newsletters, $TOTAL_SOCIAL social posts"
+          echo "Today (${DATE_STR}): $TODAY_ARTICLES articles, $TODAY_NEWSLETTERS newsletters, $TODAY_SOCIAL social posts"
+
+      - name: Pull latest changes before commit
+        run: |
+          git pull --rebase origin ${{ github.ref_name }} || true
 
       - name: Commit and push changes
         run: |
@@ -130,8 +178,8 @@ jobs:
           git config user.name "C A - github bot"
           git config user.email "achinga.chris@gmail.com"
 
-          # Stage first so new files are included
-          git add daily-articles daily-newsletters content-source README.md
+          # Stage all content directories
+          git add content/ content-source/ README.md
 
           # Check staged changes (includes new files)
           if git diff --cached --quiet; then
@@ -139,5 +187,16 @@ jobs:
             exit 0
           fi
 
-          git commit -m "chore: update daily articles and newsletters"
-          git push
+          git commit -m "chore: update daily articles, newsletters, and social posts"
+
+          # Retry push with exponential backoff on failure
+          for i in 1 2 3 4; do
+            if git push; then
+              echo "Push successful"
+              exit 0
+            fi
+            echo "Push failed, retrying in $((2**i)) seconds..."
+            sleep $((2**i))
+          done
+          echo "Push failed after 4 retries"
+          exit 1

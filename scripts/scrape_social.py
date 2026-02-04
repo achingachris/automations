@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-Daily Newsletter Scraper
+Daily Social Media Scraper
 
-Fetches RSS/Atom feeds from newsletters and compiles a daily Markdown digest.
+Fetches RSS/Atom feeds from social media platforms (Mastodon, etc.)
+and compiles a daily Markdown digest of posts.
 Uses Africa/Nairobi timezone for date filtering.
 
-Output structure: content/newsletters/YYYY/MM/DD.md
+Output structure: content/social/YYYY/MM/DD.md
 """
 
 import sys
@@ -21,6 +22,7 @@ from shared import (
     get_entry_date,
     is_today,
     is_this_month,
+    clean_summary,
     escape_pipes,
     fetch_feeds_parallel,
     get_existing_urls,
@@ -29,42 +31,57 @@ from shared import (
 )
 
 # ---- Configuration ----
-MAX_WORKERS = 5  # Fewer workers for newsletters (typically fewer feeds)
+MAX_WORKERS = 5  # Fewer workers for social feeds
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 CONTENT_DIR = ROOT_DIR / "content"
 FEEDS_DIR = ROOT_DIR / "content-source"
-NEWSLETTERS_FILE = FEEDS_DIR / "newsletters.txt"
+SOCIAL_FILE = FEEDS_DIR / "social.txt"
 
-# Table columns for newsletters
-COLUMNS = ["date", "newsletter", "title", "url"]
+# Table columns for social posts
+COLUMNS = ["date", "source", "content", "url"]
 
 
-def extract_newsletter_name(feed) -> str:
+def extract_source_name(feed) -> str:
     """
-    Extract newsletter name from feed metadata.
+    Extract source name from feed metadata.
 
     Args:
         feed: Parsed feedparser feed object
 
     Returns:
-        Cleaned newsletter title
+        Cleaned source name (e.g., "@Django@fosstodon.org")
     """
     if feed is None:
         return "Unknown"
 
     title = feed.feed.get("title", "")
     # Clean up common suffixes
-    for suffix in [" - All Issues", " RSS", " Feed", " Newsletter"]:
+    for suffix in [" RSS", " Feed", "'s posts"]:
         title = title.replace(suffix, "")
     return title.strip() or "Unknown"
 
 
+def clean_social_content(raw: str, limit: int = 280) -> str:
+    """
+    Clean social media content for display.
+
+    Args:
+        raw: Raw HTML/text content
+        limit: Maximum character length (default 280 for tweet-like content)
+
+    Returns:
+        Cleaned plain text content
+    """
+    # Use the shared clean_summary but with a higher limit for social posts
+    return clean_summary(raw, limit=limit)
+
+
 def main() -> int:
-    """Main entry point for the newsletter scraper."""
+    """Main entry point for the social media scraper."""
     today = get_today()
     date_str = get_date_str(today)
-    filepath = get_content_filepath(CONTENT_DIR, "newsletters", today)
+    filepath = get_content_filepath(CONTENT_DIR, "social", today)
 
     # Ensure output directory exists
     filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -73,28 +90,28 @@ def main() -> int:
     if not filepath.exists():
         create_placeholder_file(
             filepath=filepath,
-            title="Daily Newsletters",
+            title="Daily Social Media",
             date_str=date_str,
             columns=["#"] + COLUMNS,
-            content_type="newsletters",
+            content_type="posts",
         )
 
-    # Load newsletter URLs
-    newsletters = load_list(NEWSLETTERS_FILE)
-    if not newsletters:
-        logger.info("No newsletters configured — placeholder retained, skipping scrape.")
+    # Load social feed URLs
+    social_feeds = load_list(SOCIAL_FILE)
+    if not social_feeds:
+        logger.info("No social feeds configured — placeholder retained, skipping scrape.")
         return 0
 
     # Get existing URLs to avoid duplicates
     existing_urls = get_existing_urls(filepath)
 
-    # Detect first run (no existing newsletters)
+    # Detect first run (no existing posts)
     first_run = count_existing_rows(filepath) == 0
     if first_run:
-        logger.info("First run detected — fetching newsletters from this month")
+        logger.info("First run detected — fetching social posts from this month")
 
     # Fetch feeds in parallel
-    results, feeds_ok, feeds_failed = fetch_feeds_parallel(newsletters, max_workers=MAX_WORKERS)
+    results, feeds_ok, feeds_failed = fetch_feeds_parallel(social_feeds, max_workers=MAX_WORKERS)
 
     # Process entries
     new_entries = []
@@ -102,11 +119,13 @@ def main() -> int:
         if not entries:
             continue
 
-        newsletter_name = extract_newsletter_name(feed)
+        source_name = extract_source_name(feed)
 
         for entry in entries:
             url = entry.get("link", "").strip()
-            title = entry.get("title", "").strip()
+            # Social posts often use summary or content for the post text
+            content = entry.get("summary", "") or entry.get("title", "")
+            content = content.strip()
 
             # Skip if no URL or already exists
             if not url or url in existing_urls:
@@ -125,8 +144,8 @@ def main() -> int:
 
             new_entries.append({
                 "date": entry_date_str,
-                "newsletter": escape_pipes(newsletter_name),
-                "title": escape_pipes(title),
+                "source": escape_pipes(source_name),
+                "content": escape_pipes(clean_social_content(content)),
                 "url": url,
             })
 
@@ -134,7 +153,7 @@ def main() -> int:
 
     # Exit cleanly if nothing new
     if not new_entries:
-        msg = "No new newsletters found this month." if first_run else "No new newsletters found today."
+        msg = "No new social posts found this month." if first_run else "No new social posts found today."
         logger.info(msg)
         return 0
 
@@ -143,23 +162,23 @@ def main() -> int:
 
     lines = [
         "",
-        f"## New newsletters ({get_date_str()} {LOCAL_TZ})",
+        f"## New social posts ({get_date_str()} {LOCAL_TZ})",
         "",
-        f"Summary: {len(new_entries)} new newsletter issues",
+        f"Summary: {len(new_entries)} new posts",
         "",
-        "| # | date | newsletter | title | url |",
+        "| # | date | source | content | url |",
         "| --- | --- | --- | --- | --- |",
     ]
 
     for idx, row in enumerate(new_entries, start=offset + 1):
         lines.append(
-            f"| {idx} | {row['date']} | {row['newsletter']} | {row['title']} | {row['url']} |"
+            f"| {idx} | {row['date']} | {row['source']} | {row['content']} | {row['url']} |"
         )
 
     with open(filepath, "a", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
-    logger.info(f"Added {len(new_entries)} newsletter issues to {filepath}")
+    logger.info(f"Added {len(new_entries)} social posts to {filepath}")
     return 0
 
 

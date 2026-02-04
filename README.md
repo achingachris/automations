@@ -8,24 +8,21 @@ Small Python automation that scrapes RSS/Atom feeds and publishes a daily Markdo
 | --- | --- |
 | Total Articles | 5700 |
 | Total Newsletters | 80 |
+| Total Social Posts | 0 |
 | Last Updated | 2026-02-04 12:13 EAT |
 <!-- STATS_END -->
 
 ## Recent Updates
 
 <!-- DAILY_LOG_START -->
-| Date | Articles | Newsletters |
-| --- | --- | --- |
-| 26-01-2026 | 58 | 7 |
-| Date | Articles | Newsletters |
-| 25-01-2026 | 55 | 7 |
-| Date | Articles | Newsletters |
-| 24-01-2026 | 55 | 7 |
-| Date | Articles | Newsletters |
-| 23-01-2026 | 54 | 7 |
-| Date | Articles | Newsletters |
-| 22-01-2026 | 53 | 6 |
-| 21-01-2026 | 84 | 8 |
+| Date | Articles | Newsletters | Social |
+| --- | --- | --- | --- |
+| 26-01-2026 | 58 | 7 | 0 |
+| 25-01-2026 | 55 | 7 | 0 |
+| 24-01-2026 | 55 | 7 | 0 |
+| 23-01-2026 | 54 | 7 | 0 |
+| 22-01-2026 | 53 | 6 | 0 |
+| 21-01-2026 | 84 | 8 | 0 |
 <!-- DAILY_LOG_END -->
 
 GitHub CI Status:
@@ -34,13 +31,23 @@ GitHub CI Status:
 
 ## Project Structure
 
-- `scripts/scrape_daily_articles.py`: Article scraper (fetch feeds -> write Markdown tables).
-- `scripts/scrape_newsletters.py`: Newsletter scraper (fetch newsletter feeds -> write Markdown tables).
-- `content-source/feeds.txt`: RSS/Atom feeds for articles.
-- `content-source/newsletters.txt`: RSS/Atom feeds for newsletters.
-- `daily-articles/`: Generated article output, one file per day named `DD-MM-YYYY.md`.
-- `daily-newsletters/`: Generated newsletter output, one file per day named `DD-MM-YYYY.md`.
-- `.github/workflows/daily-scrape.yml`: Scheduled GitHub Action that runs both scrapers and commits changes.
+```
+├── scripts/
+│   ├── shared.py                 # Shared utilities (logging, feed fetching, date handling)
+│   ├── scrape_daily_articles.py  # Article scraper
+│   ├── scrape_newsletters.py     # Newsletter scraper
+│   └── scrape_social.py          # Social media scraper
+├── content/
+│   ├── articles/YYYY/MM/DD.md    # Daily article digests
+│   ├── newsletters/YYYY/MM/DD.md # Daily newsletter digests
+│   └── social/YYYY/MM/DD.md      # Daily social media digests
+├── content-source/
+│   ├── feeds.txt                 # RSS/Atom feeds for articles
+│   ├── newsletters.txt           # RSS/Atom feeds for newsletters
+│   └── social.txt                # RSS/Atom feeds for social media
+└── .github/workflows/
+    └── daily-scrape.yml          # Scheduled GitHub Action (5x daily)
+```
 
 ## Usage
 
@@ -48,11 +55,10 @@ GitHub CI Status:
 # Install dependencies
 python -m pip install -r requirements.txt
 
-# Run article scraper
+# Run scrapers
 python scripts/scrape_daily_articles.py
-
-# Run newsletter scraper
 python scripts/scrape_newsletters.py
+python scripts/scrape_social.py
 ```
 
 Optional local setup (do not commit):
@@ -62,5 +68,6 @@ python -m venv .venv && source .venv/bin/activate && python -m pip install -r re
 
 ## Notes
 
-- The workflow updates `daily-articles/` and `daily-newsletters/` on schedule; avoid manual edits unless debugging formatting.
+- The workflow updates `content/` directories on schedule; avoid manual edits unless debugging formatting.
 - On first run, scrapers fetch all content from the current month.
+- Content is organized by date: `content/{type}/YYYY/MM/DD.md`
