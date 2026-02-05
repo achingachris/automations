@@ -4,16 +4,27 @@ This repository is a small Python automation that scrapes RSS/Atom feeds and pub
 
 ## Project Structure & Module Organization
 
-- `scripts/scrape_daily_articles.py`: Main entrypoint (fetch feeds → filter by topics → write Markdown tables).
-- `content-source/topics.txt`: Topic keywords; also used to generate Medium tag feed URLs.
-- `content-source/feeds.txt`: Extra (non‑Medium) RSS/Atom feeds.
-- `daily-articles/`: Generated output, one file per day named `DD-MM-YYYY.md`.
-- `.github/workflows/daily-scrape.yml`: Scheduled GitHub Action that runs the scraper and commits changes.
+- `scripts/shared.py`: Shared utilities (logging, date handling, feed fetching, Markdown helpers).
+- `scripts/scrape_daily_articles.py`: Article scraper (RSS/Atom feeds → filter by date → write Markdown tables).
+- `scripts/scrape_newsletters.py`: Newsletter scraper (RSS/Atom feeds → filter by date → write Markdown tables).
+- `scripts/scrape_social.py`: Social scraper (RSS/Atom feeds → filter by date → write Markdown tables).
+- `scripts/generate_weekly_newsletter.py`: Weekly newsletter generator (OpenAI).
+- `content-source/feeds.txt`: Article RSS/Atom feeds.
+- `content-source/newsletters.txt`: Newsletter RSS/Atom feeds.
+- `content-source/social.txt`: Social RSS/Atom feeds.
+- `content-source/newsletter-prompt.txt`: Prompt for weekly newsletter generation.
+- `content-source/editor-prompt.txt`: Editor/copyeditor prompt for weekly newsletters.
+- `content/`: Generated output (`articles/`, `newsletters/`, `social/`, `weekly/`).
+- `.github/workflows/daily-scrape.yml`: Scheduled GitHub Action for daily scraping.
+- `.github/workflows/weekly-newsletter.yml`: Scheduled GitHub Action for weekly newsletter generation.
 
 ## Build, Test, and Development Commands
 
 - `python -m pip install feedparser`: Install the runtime dependency used by CI.
-- `python scripts/scrape_daily_articles.py`: Run the scraper locally; updates today’s file in `daily-articles/`.
+- `python scripts/scrape_daily_articles.py`: Run the article scraper; updates today’s file in `content/articles/`.
+- `python scripts/scrape_newsletters.py`: Run the newsletter scraper; updates today’s file in `content/newsletters/`.
+- `python scripts/scrape_social.py`: Run the social scraper; updates today’s file in `content/social/`.
+- `python scripts/generate_weekly_newsletter.py`: Generate weekly newsletter (requires `OPENAI_API_KEY`).
 - `python -m compileall scripts`: Quick syntax sanity check before pushing.
 
 Example local setup (recommended; don’t commit it):
@@ -43,7 +54,8 @@ There is no dedicated test suite yet.
 
 ## Automation Notes
 
-`daily-articles/` is typically updated by CI. Avoid manual edits unless you’re debugging formatting; they may be overwritten on the next run.
+Scrapers only include entries with a published date matching **today** in Africa/Nairobi timezone.
+`content/` is typically updated by CI. Avoid manual edits unless you’re debugging formatting; they may be overwritten on the next run.
 
 ## File Safety
 

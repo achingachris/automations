@@ -21,7 +21,6 @@ from shared import (
     load_list,
     get_entry_date,
     is_today,
-    is_this_month,
     clean_summary,
     escape_pipes,
     fetch_feeds_parallel,
@@ -105,11 +104,6 @@ def main() -> int:
     # Get existing URLs to avoid duplicates
     existing_urls = get_existing_urls(filepath)
 
-    # Detect first run (no existing posts)
-    first_run = count_existing_rows(filepath) == 0
-    if first_run:
-        logger.info("First run detected — fetching social posts from this month")
-
     # Fetch feeds in parallel
     results, feeds_ok, feeds_failed = fetch_feeds_parallel(social_feeds, max_workers=MAX_WORKERS)
 
@@ -131,13 +125,9 @@ def main() -> int:
             if not url or url in existing_urls:
                 continue
 
-            # Date filtering: first run gets this month, otherwise today only
-            if first_run:
-                if not is_this_month(entry, today):
-                    continue
-            else:
-                if not is_today(entry, today):
-                    continue
+            # Date filtering: today only
+            if not is_today(entry, today):
+                continue
 
             entry_date = get_entry_date(entry)
             entry_date_str = entry_date.strftime("%d-%m-%Y") if entry_date else date_str
@@ -153,8 +143,7 @@ def main() -> int:
 
     # Exit cleanly if nothing new
     if not new_entries:
-        msg = "No new social posts found this month." if first_run else "No new social posts found today."
-        logger.info(msg)
+        logger.info("No new social posts found today.")
         return 0
 
     # Append entries to file
