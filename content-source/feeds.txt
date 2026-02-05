@@ -1,34 +1,35 @@
+# Article sources (website URLs preferred; direct feeds also supported)
 # Django/Python blogs
-https://medium.com/feed/@kudzayibamhare
-https://adamj.eu/tech/atom.xml
+https://medium.com/@kudzayibamhare
+https://adamj.eu/tech/
 https://noumenal.es/posts/feed/
 https://veldakiara.substack.com/feed
-https://www.better-simple.com/atom.xml
-https://sarahabd.com/feeds/rss.xml
+https://www.better-simple.com/
+https://sarahabd.com/
 http://feeds.feedburner.com/JeffTriplett
-https://micro.webology.dev/feed.xml
-https://treyhunner.com/atom.xml
-https://wsvincent.com/feed.xml
-https://www.paulox.net/feed.xml
-https://learndjango.com/feed/rss/
-https://www.holovaty.com/rss/
-https://jacobian.org/feed/
+https://micro.webology.dev/
+https://treyhunner.com/
+https://wsvincent.com/
+https://www.paulox.net/
+https://learndjango.com/
+https://www.holovaty.com/
+https://jacobian.org/
 https://www.mattlayman.com/index.xml
 https://davidism.com/feed/
 https://blog.pamelafox.org/feeds/posts/default
 https://mariatta.ca/index.xml
 https://kjaymiller.com/blog.rss
 https://softwarecrafts.co.uk/feed.xml
-https://addyosmani.com/feed.xml
-https://realpython.com/atom.xml
-https://simpleisbetterthancomplex.com/feed.xml
-https://testdriven.io/feed.xml
-https://photondesigner.com/feed.xml
-https://developer.mozilla.org/en-US/blog/rss.xml
-https://www.fullstackpython.com/feed
+https://addyosmani.com/
+https://realpython.com/
+https://simpleisbetterthancomplex.com/
+https://testdriven.io/
+https://photondesigner.com/
+https://developer.mozilla.org/en-US/blog/
+https://www.fullstackpython.com/
 
 # Django Official
-https://www.djangoproject.com/rss/weblog/
+https://www.djangoproject.com/weblog/
 
 # Podcasts
 https://feeds.simplecast.com/WpQaX_cs

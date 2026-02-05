@@ -1,6 +1,6 @@
-# Newsletter RSS feeds
-https://django-news.com/issues.rss
-https://pycoders.com/feed/PsawLTyI
+# Newsletter sources (website URLs preferred; direct feeds also supported)
+https://django-news.com/
+https://pycoders.com/
 
 # No RSS available:
 # https://syntax.fm/snackpack - podcast feed only

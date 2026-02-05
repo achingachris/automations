@@ -1,17 +1,17 @@
 # Repository Guidelines
 
-This repository is a small Python automation that scrapes RSS/Atom feeds and publishes a daily Markdown digest.
+This repository is a small Python automation that scrapes website/profile sources (with feed auto-discovery) and publishes a daily Markdown digest.
 
 ## Project Structure & Module Organization
 
 - `scripts/shared.py`: Shared utilities (logging, date handling, feed fetching, Markdown helpers).
-- `scripts/scrape_daily_articles.py`: Article scraper (RSS/Atom feeds → filter by date → write Markdown tables).
-- `scripts/scrape_newsletters.py`: Newsletter scraper (RSS/Atom feeds → filter by date → write Markdown tables).
-- `scripts/scrape_social.py`: Social scraper (RSS/Atom feeds → filter by date → write Markdown tables).
+- `scripts/scrape_daily_articles.py`: Article scraper (source URLs/feed URLs → filter by date → write Markdown tables).
+- `scripts/scrape_newsletters.py`: Newsletter scraper (source URLs/feed URLs → filter by date → write Markdown tables).
+- `scripts/scrape_social.py`: Social scraper (source URLs/feed URLs → filter by date → write Markdown tables).
 - `scripts/generate_weekly_newsletter.py`: Weekly newsletter generator (OpenAI).
-- `content-source/feeds.txt`: Article RSS/Atom feeds.
-- `content-source/newsletters.txt`: Newsletter RSS/Atom feeds.
-- `content-source/social.txt`: Social RSS/Atom feeds.
+- `content-source/feeds.txt`: Article source URLs (website/profile URLs preferred).
+- `content-source/newsletters.txt`: Newsletter source URLs (website URLs preferred).
+- `content-source/social.txt`: Social source URLs (profile URLs preferred).
 - `content-source/newsletter-prompt.txt`: Prompt for weekly newsletter generation.
 - `content-source/editor-prompt.txt`: Editor/copyeditor prompt for weekly newsletters.
 - `content/`: Generated output (`articles/`, `newsletters/`, `social/`, `weekly/`).
@@ -55,6 +55,8 @@ There is no dedicated test suite yet.
 ## Automation Notes
 
 Scrapers only include entries with a published date matching **today** in Africa/Nairobi timezone.
+Social scraper deduplicates against all historical social content files.
+Source files can contain website/profile URLs; scrapers auto-discover RSS/Atom links when needed.
 `content/` is typically updated by CI. Avoid manual edits unless you’re debugging formatting; they may be overwritten on the next run.
 
 ## File Safety

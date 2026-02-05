@@ -74,7 +74,7 @@ def get_week_number(d: datetime.date) -> tuple[int, int]:
 def get_past_7_days() -> list[datetime.date]:
     """Get list of dates for the past 7 days (oldest first)."""
     today = get_today()
-    return [today - timedelta(days=i) for i in range(7, 0, -1)]
+    return [today - timedelta(days=i) for i in range(6, -1, -1)]
 
 
 def parse_markdown_table(filepath: Path) -> list[dict]:

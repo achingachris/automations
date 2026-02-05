@@ -12,9 +12,12 @@ import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, date
+from html.parser import HTMLParser
 from html import unescape
 from pathlib import Path
 from typing import Callable
+from urllib.parse import urljoin
+from urllib.request import Request, urlopen
 
 import feedparser
 
@@ -43,9 +46,36 @@ DEFAULT_MAX_WORKERS = 10
 DEFAULT_FEED_TIMEOUT = 30
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_RETRY_BACKOFF = 2
+DEFAULT_USER_AGENT = "Mozilla/5.0 (compatible; FeedScraper/1.0)"
 
 # More robust URL pattern that avoids trailing punctuation
 URL_PATTERN = re.compile(r"https?://[^\s|)>\]\"']+(?<![.,;:!?])")
+
+
+class FeedLinkParser(HTMLParser):
+    """Extract RSS/Atom alternate links from an HTML document."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.feed_urls: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() != "link":
+            return
+
+        attrs_dict = {k.lower(): (v or "") for k, v in attrs}
+        rel = attrs_dict.get("rel", "").lower()
+        type_attr = attrs_dict.get("type", "").lower()
+        href = attrs_dict.get("href", "").strip()
+
+        if not href:
+            return
+
+        # Most sites expose feeds as <link rel="alternate" type="application/rss+xml" ...>
+        is_alternate = "alternate" in rel
+        looks_like_feed = any(token in type_attr for token in ("rss", "atom", "xml"))
+        if is_alternate and looks_like_feed:
+            self.feed_urls.append(href)
 
 
 def get_today() -> date:
@@ -173,7 +203,7 @@ def escape_pipes(text: str) -> str:
 
 
 def fetch_feed(
-    feed_url: str,
+    source_url: str,
     max_retries: int = DEFAULT_MAX_RETRIES,
     backoff: int = DEFAULT_RETRY_BACKOFF,
 ) -> tuple[str, object | None, list]:
@@ -181,47 +211,83 @@ def fetch_feed(
     Fetch and parse a single feed with retry logic.
 
     Args:
-        feed_url: URL of the RSS/Atom feed
+        source_url: URL of a website/profile page or direct RSS/Atom feed
         max_retries: Maximum number of retry attempts
         backoff: Base backoff time in seconds (exponential)
 
     Returns:
-        Tuple of (feed_url, feed_object, entries_list)
+        Tuple of (source_url, feed_object, entries_list)
     """
+    def parse_feed(url: str) -> tuple[object | None, list]:
+        feed = feedparser.parse(
+            url,
+            request_headers={"User-Agent": DEFAULT_USER_AGENT},
+        )
+        if feed.bozo and not feed.entries:
+            return None, []
+        return feed, feed.entries
+
+    def discover_feed_urls(url: str) -> list[str]:
+        try:
+            req = Request(url, headers={"User-Agent": DEFAULT_USER_AGENT})
+            with urlopen(req, timeout=DEFAULT_FEED_TIMEOUT) as response:
+                html = response.read().decode("utf-8", errors="replace")
+        except Exception as e:
+            logger.debug(f"Failed to fetch source page {url}: {e}")
+            return []
+
+        parser = FeedLinkParser()
+        parser.feed(html)
+
+        # Preserve order while deduplicating
+        seen = set()
+        discovered = []
+        for href in parser.feed_urls:
+            absolute_url = urljoin(url, href)
+            if absolute_url not in seen:
+                seen.add(absolute_url)
+                discovered.append(absolute_url)
+        return discovered
+
     for attempt in range(max_retries):
         try:
-            feed = feedparser.parse(
-                feed_url,
-                request_headers={"User-Agent": "Mozilla/5.0 (compatible; FeedScraper/1.0)"},
-            )
+            feed, entries = parse_feed(source_url)
+            if entries:
+                return source_url, feed, entries
 
-            if feed.bozo and not feed.entries:
-                logger.warning(f"Malformed feed {feed_url}: {feed.bozo_exception}")
-                return feed_url, None, []
+            # If direct parsing fails, treat source as a normal webpage and discover feed URLs.
+            discovered_feed_urls = discover_feed_urls(source_url)
+            for discovered_url in discovered_feed_urls:
+                feed, entries = parse_feed(discovered_url)
+                if entries:
+                    logger.info(f"Discovered feed for {source_url}: {discovered_url}")
+                    return source_url, feed, entries
+                logger.debug(f"Discovered feed had no entries: {discovered_url}")
 
-            return feed_url, feed, feed.entries
+            logger.warning(f"No parseable feed entries found for source: {source_url}")
+            return source_url, None, []
 
         except Exception as e:
             if attempt < max_retries - 1:
                 wait_time = backoff ** attempt
-                logger.debug(f"Retry {attempt + 1}/{max_retries} for {feed_url} after {wait_time}s")
+                logger.debug(f"Retry {attempt + 1}/{max_retries} for {source_url} after {wait_time}s")
                 time.sleep(wait_time)
                 continue
-            logger.error(f"Failed to fetch {feed_url} after {max_retries} attempts: {e}")
-            return feed_url, None, []
+            logger.error(f"Failed to fetch {source_url} after {max_retries} attempts: {e}")
+            return source_url, None, []
 
-    return feed_url, None, []
+    return source_url, None, []
 
 
 def fetch_feeds_parallel(
-    feed_urls: list[str],
+    source_urls: list[str],
     max_workers: int = DEFAULT_MAX_WORKERS,
 ) -> tuple[list[tuple[str, object | None, list]], int, int]:
     """
     Fetch multiple feeds in parallel.
 
     Args:
-        feed_urls: List of feed URLs to fetch
+        source_urls: List of source URLs to fetch
         max_workers: Maximum number of parallel workers
 
     Returns:
@@ -232,7 +298,7 @@ def fetch_feeds_parallel(
     feeds_failed = 0
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(fetch_feed, url): url for url in feed_urls}
+        futures = {executor.submit(fetch_feed, url): url for url in source_urls}
 
         for future in as_completed(futures):
             result = future.result()
@@ -245,7 +311,7 @@ def fetch_feeds_parallel(
 
             results.append(result)
 
-    logger.info(f"Fetched {feeds_ok}/{len(feed_urls)} feeds successfully ({feeds_failed} failed)")
+    logger.info(f"Fetched {feeds_ok}/{len(source_urls)} sources successfully ({feeds_failed} failed)")
     return results, feeds_ok, feeds_failed
 
 

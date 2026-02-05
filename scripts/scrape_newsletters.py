@@ -2,7 +2,7 @@
 """
 Daily Newsletter Scraper
 
-Fetches RSS/Atom feeds from newsletters and compiles a daily Markdown digest.
+Fetches newsletter sources (website URLs or direct feeds) and compiles a daily Markdown digest.
 Uses Africa/Nairobi timezone for date filtering.
 
 Output structure: content/newsletters/YYYY/MM/DD.md
@@ -13,7 +13,6 @@ from pathlib import Path
 
 from shared import (
     logger,
-    LOCAL_TZ,
     get_today,
     get_date_str,
     get_content_filepath,
@@ -23,8 +22,8 @@ from shared import (
     escape_pipes,
     fetch_feeds_parallel,
     get_all_existing_urls,
-    count_existing_rows,
     create_placeholder_file,
+    append_entries_to_file,
 )
 
 # ---- Configuration ----
@@ -33,7 +32,7 @@ MAX_WORKERS = 5  # Fewer workers for newsletters (typically fewer feeds)
 ROOT_DIR = Path(__file__).resolve().parent.parent
 CONTENT_DIR = ROOT_DIR / "content"
 FEEDS_DIR = ROOT_DIR / "content-source"
-NEWSLETTERS_FILE = FEEDS_DIR / "newsletters.txt"
+NEWSLETTER_SOURCES_FILE = FEEDS_DIR / "newsletters.txt"
 
 # Table columns for newsletters
 COLUMNS = ["date", "newsletter", "title", "url"]
@@ -78,17 +77,17 @@ def main() -> int:
             content_type="newsletters",
         )
 
-    # Load newsletter URLs
-    newsletters = load_list(NEWSLETTERS_FILE)
-    if not newsletters:
-        logger.info("No newsletters configured — placeholder retained, skipping scrape.")
+    # Load newsletter source URLs (site pages or direct feed endpoints)
+    newsletter_sources = load_list(NEWSLETTER_SOURCES_FILE)
+    if not newsletter_sources:
+        logger.info("No newsletter sources configured — placeholder retained, skipping scrape.")
         return 0
 
     # Get existing URLs to avoid duplicates (checks all historical files)
     existing_urls = get_all_existing_urls(CONTENT_DIR / "newsletters")
 
-    # Fetch feeds in parallel
-    results, feeds_ok, feeds_failed = fetch_feeds_parallel(newsletters, max_workers=MAX_WORKERS)
+    # Fetch sources in parallel
+    results, feeds_ok, feeds_failed = fetch_feeds_parallel(newsletter_sources, max_workers=MAX_WORKERS)
 
     # Process entries
     new_entries = []
@@ -128,25 +127,12 @@ def main() -> int:
         return 0
 
     # Append entries to file
-    offset = count_existing_rows(filepath)
-
-    lines = [
-        "",
-        f"## New newsletters ({get_date_str()} {LOCAL_TZ})",
-        "",
-        f"Summary: {len(new_entries)} new newsletter issues",
-        "",
-        "| # | date | newsletter | title | url |",
-        "| --- | --- | --- | --- | --- |",
-    ]
-
-    for idx, row in enumerate(new_entries, start=offset + 1):
-        lines.append(
-            f"| {idx} | {row['date']} | {row['newsletter']} | {row['title']} | {row['url']} |"
-        )
-
-    with open(filepath, "a", encoding="utf-8") as f:
-        f.write("\n".join(lines) + "\n")
+    append_entries_to_file(
+        filepath=filepath,
+        entries=new_entries,
+        columns=COLUMNS,
+        section_title="New newsletters",
+    )
 
     logger.info(f"Added {len(new_entries)} newsletter issues to {filepath}")
     return 0

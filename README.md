@@ -1,5 +1,5 @@
 # automations
-Small Python automation that scrapes RSS/Atom feeds and publishes a daily Markdown digest, plus a weekly AI-generated newsletter.
+Small Python automation that scrapes website/profile sources (with feed auto-discovery) and publishes a daily Markdown digest, plus a weekly AI-generated newsletter.
 
 ## Stats
 
@@ -51,9 +51,9 @@ GitHub CI Status:
 ├── weekly-raw/
 │   └── YYYY-WXX.txt                   # Raw fetched content for newsletters
 ├── content-source/
-│   ├── feeds.txt                      # RSS/Atom feeds for articles
-│   ├── newsletters.txt                # RSS/Atom feeds for newsletters
-│   ├── social.txt                     # RSS/Atom feeds for social media
+│   ├── feeds.txt                      # Article source URLs (site/profile or direct feed)
+│   ├── newsletters.txt                # Newsletter source URLs (site or direct feed)
+│   ├── social.txt                     # Social source URLs (profile or direct feed)
 │   ├── newsletter-prompt.txt          # Newsletter generation prompt
 │   └── editor-prompt.txt              # Editor/copyeditor prompt
 └── .github/workflows/
@@ -96,5 +96,6 @@ Requires `OPENAI_API_KEY` set in environment or `.env` file.
 ## Notes
 
 - The workflow updates `content/` directories on schedule; avoid manual edits unless debugging formatting.
+- `content-source/*.txt` accepts website/profile URLs and direct feed URLs; scrapers auto-discover RSS/Atom links from pages when needed.
 - On first run, scrapers fetch all content from the current month.
 - Content is organized by date: `content/{type}/YYYY/MM/DD.md`

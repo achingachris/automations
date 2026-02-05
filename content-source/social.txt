@@ -1,8 +1,7 @@
-# Social Media / Community Feeds
-# Mastodon, Bluesky, and other social platform RSS feeds
+# Social media/community sources (profile URLs preferred; direct feeds also supported)
 
 # Mastodon
-https://fosstodon.org/@Django.rss
+https://fosstodon.org/@Django
 
 # No RSS available:
 # https://x.com/djangoproject - Twitter (no public RSS)

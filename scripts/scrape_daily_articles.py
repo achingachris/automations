@@ -2,7 +2,7 @@
 """
 Daily Tech Articles Scraper
 
-Fetches RSS/Atom feeds and compiles a daily Markdown digest of tech articles.
+Fetches content sources (website/profile URLs or direct feeds) and compiles a daily Markdown digest.
 Uses Africa/Nairobi timezone for date filtering.
 
 Output structure: content/articles/YYYY/MM/DD.md
@@ -13,7 +13,6 @@ from pathlib import Path
 
 from shared import (
     logger,
-    LOCAL_TZ,
     get_today,
     get_date_str,
     get_content_filepath,
@@ -24,8 +23,8 @@ from shared import (
     escape_pipes,
     fetch_feeds_parallel,
     get_all_existing_urls,
-    count_existing_rows,
     create_placeholder_file,
+    append_entries_to_file,
 )
 
 # ---- Configuration ----
@@ -34,7 +33,7 @@ MAX_WORKERS = 10
 ROOT_DIR = Path(__file__).resolve().parent.parent
 CONTENT_DIR = ROOT_DIR / "content"
 FEEDS_DIR = ROOT_DIR / "content-source"
-FEEDS_FILE = FEEDS_DIR / "feeds.txt"
+SOURCES_FILE = FEEDS_DIR / "feeds.txt"
 
 # Table columns for articles
 COLUMNS = ["date", "title", "url", "summary"]
@@ -59,17 +58,17 @@ def main() -> int:
             content_type="articles",
         )
 
-    # Load feed URLs
-    feeds = load_list(FEEDS_FILE)
-    if not feeds:
-        logger.info("No feeds configured — placeholder retained, skipping scrape.")
+    # Load source URLs (site pages or direct feed endpoints)
+    sources = load_list(SOURCES_FILE)
+    if not sources:
+        logger.info("No article sources configured — placeholder retained, skipping scrape.")
         return 0
 
     # Get existing URLs to avoid duplicates (checks all historical files)
     existing_urls = get_all_existing_urls(CONTENT_DIR / "articles")
 
-    # Fetch feeds in parallel
-    results, feeds_ok, feeds_failed = fetch_feeds_parallel(feeds, max_workers=MAX_WORKERS)
+    # Fetch sources in parallel
+    results, feeds_ok, feeds_failed = fetch_feeds_parallel(sources, max_workers=MAX_WORKERS)
 
     # Process entries
     new_entries = []
@@ -108,25 +107,12 @@ def main() -> int:
         return 0
 
     # Append entries to file
-    offset = count_existing_rows(filepath)
-
-    lines = [
-        "",
-        f"## Additional articles ({get_date_str()} {LOCAL_TZ})",
-        "",
-        f"Summary: {len(new_entries)} new articles",
-        "",
-        "| # | date | title | url | summary |",
-        "| --- | --- | --- | --- | --- |",
-    ]
-
-    for idx, row in enumerate(new_entries, start=offset + 1):
-        lines.append(
-            f"| {idx} | {row['date']} | {row['title']} | {row['url']} | {row['summary']} |"
-        )
-
-    with open(filepath, "a", encoding="utf-8") as f:
-        f.write("\n".join(lines) + "\n")
+    append_entries_to_file(
+        filepath=filepath,
+        entries=new_entries,
+        columns=COLUMNS,
+        section_title="Additional articles",
+    )
 
     logger.info(f"Added {len(new_entries)} articles to {filepath}")
     return 0

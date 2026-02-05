@@ -2,7 +2,7 @@
 """
 Daily Social Media Scraper
 
-Fetches RSS/Atom feeds from social media platforms (Mastodon, etc.)
+Fetches social sources (profile URLs or direct feeds)
 and compiles a daily Markdown digest of posts.
 Uses Africa/Nairobi timezone for date filtering.
 
@@ -14,7 +14,6 @@ from pathlib import Path
 
 from shared import (
     logger,
-    LOCAL_TZ,
     get_today,
     get_date_str,
     get_content_filepath,
@@ -24,9 +23,9 @@ from shared import (
     clean_summary,
     escape_pipes,
     fetch_feeds_parallel,
-    get_existing_urls,
-    count_existing_rows,
+    get_all_existing_urls,
     create_placeholder_file,
+    append_entries_to_file,
 )
 
 # ---- Configuration ----
@@ -35,7 +34,7 @@ MAX_WORKERS = 5  # Fewer workers for social feeds
 ROOT_DIR = Path(__file__).resolve().parent.parent
 CONTENT_DIR = ROOT_DIR / "content"
 FEEDS_DIR = ROOT_DIR / "content-source"
-SOCIAL_FILE = FEEDS_DIR / "social.txt"
+SOCIAL_SOURCES_FILE = FEEDS_DIR / "social.txt"
 
 # Table columns for social posts
 COLUMNS = ["date", "source", "content", "url"]
@@ -95,17 +94,17 @@ def main() -> int:
             content_type="posts",
         )
 
-    # Load social feed URLs
-    social_feeds = load_list(SOCIAL_FILE)
-    if not social_feeds:
-        logger.info("No social feeds configured — placeholder retained, skipping scrape.")
+    # Load social source URLs (profile pages or direct feed endpoints)
+    social_sources = load_list(SOCIAL_SOURCES_FILE)
+    if not social_sources:
+        logger.info("No social sources configured — placeholder retained, skipping scrape.")
         return 0
 
-    # Get existing URLs to avoid duplicates
-    existing_urls = get_existing_urls(filepath)
+    # Get existing URLs to avoid duplicates (checks all historical files)
+    existing_urls = get_all_existing_urls(CONTENT_DIR / "social")
 
-    # Fetch feeds in parallel
-    results, feeds_ok, feeds_failed = fetch_feeds_parallel(social_feeds, max_workers=MAX_WORKERS)
+    # Fetch sources in parallel
+    results, feeds_ok, feeds_failed = fetch_feeds_parallel(social_sources, max_workers=MAX_WORKERS)
 
     # Process entries
     new_entries = []
@@ -147,25 +146,12 @@ def main() -> int:
         return 0
 
     # Append entries to file
-    offset = count_existing_rows(filepath)
-
-    lines = [
-        "",
-        f"## New social posts ({get_date_str()} {LOCAL_TZ})",
-        "",
-        f"Summary: {len(new_entries)} new posts",
-        "",
-        "| # | date | source | content | url |",
-        "| --- | --- | --- | --- | --- |",
-    ]
-
-    for idx, row in enumerate(new_entries, start=offset + 1):
-        lines.append(
-            f"| {idx} | {row['date']} | {row['source']} | {row['content']} | {row['url']} |"
-        )
-
-    with open(filepath, "a", encoding="utf-8") as f:
-        f.write("\n".join(lines) + "\n")
+    append_entries_to_file(
+        filepath=filepath,
+        entries=new_entries,
+        columns=COLUMNS,
+        section_title="New social posts",
+    )
 
     logger.info(f"Added {len(new_entries)} social posts to {filepath}")
     return 0
