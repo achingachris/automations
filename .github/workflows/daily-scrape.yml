@@ -138,31 +138,81 @@ jobs:
             TODAY_SOCIAL=$(grep -c "^|.*http" "$SOCIAL_FILE" 2>/dev/null || echo 0)
           fi
 
-          # Update total stats section
-          sed -i '/<!-- STATS_START -->/,/<!-- STATS_END -->/c\<!-- STATS_START -->\n| Metric | Count |\n| --- | --- |\n| Total Articles | '"$TOTAL_ARTICLES"' |\n| Total Newsletters | '"$TOTAL_NEWSLETTERS"' |\n| Total Social Posts | '"$TOTAL_SOCIAL"' |\n| Last Updated | '"$LAST_UPDATED"' |\n<!-- STATS_END -->' README.md
+          # Update README stats + daily log (portable, avoids sed/awk quirks)
+          export TOTAL_ARTICLES TOTAL_NEWSLETTERS TOTAL_SOCIAL LAST_UPDATED
+          export DATE_STR TODAY_ARTICLES TODAY_NEWSLETTERS TODAY_SOCIAL
+          python - <<'PY'
+          from pathlib import Path
+          import os
+          import re
+          import sys
 
-          # Update daily log (keep last 10 entries)
-          NEW_ROW="| ${DATE_STR} | ${TODAY_ARTICLES} | ${TODAY_NEWSLETTERS} | ${TODAY_SOCIAL} |"
+          readme_path = Path("README.md")
+          text = readme_path.read_text()
 
-          # Check if today's entry already exists, if so update it, otherwise add new row
-          if grep -q "| ${DATE_STR} |" README.md; then
-            sed -i "s/| ${DATE_STR} |.*/${NEW_ROW}/" README.md
-          else
-            # Add new row after header, keep only last 10 entries
-            sed -i '/<!-- DAILY_LOG_START -->/,/<!-- DAILY_LOG_END -->/{
-              /| --- | --- | --- | --- |/a\'"${NEW_ROW}"'
-            }' README.md
+          stats_block = "\n".join(
+              [
+                  "<!-- STATS_START -->",
+                  "| Metric | Count |",
+                  "| --- | --- |",
+                  f"| Total Articles | {os.environ['TOTAL_ARTICLES']} |",
+                  f"| Total Newsletters | {os.environ['TOTAL_NEWSLETTERS']} |",
+                  f"| Total Social Posts | {os.environ['TOTAL_SOCIAL']} |",
+                  f"| Last Updated | {os.environ['LAST_UPDATED']} |",
+                  "<!-- STATS_END -->",
+              ]
+          )
 
-            # Keep only last 10 data rows (plus header)
-            awk '
-              /<!-- DAILY_LOG_START -->/{p=1; print; next}
-              /<!-- DAILY_LOG_END -->/{p=0; for(i=1;i<=2;i++) print header[i]; for(i=(c>10?c-9:1);i<=c;i++) print lines[i]; print; next}
-              p && /^\| ---/{header[1]=prev; header[2]=$0; next}
-              p && /^\|/{lines[++c]=$0}
-              p{prev=$0; next}
-              !p{print}
-            ' README.md > README.tmp && mv README.tmp README.md
-          fi
+          if "<!-- STATS_START -->" not in text or "<!-- STATS_END -->" not in text:
+              sys.exit("Stats markers not found in README.md")
+
+          text = re.sub(
+              r"<!-- STATS_START -->.*?<!-- STATS_END -->",
+              stats_block,
+              text,
+              flags=re.S,
+          )
+
+          new_row = (
+              f"| {os.environ['DATE_STR']} | {os.environ['TODAY_ARTICLES']} | "
+              f"{os.environ['TODAY_NEWSLETTERS']} | {os.environ['TODAY_SOCIAL']} |"
+          )
+
+          m = re.search(
+              r"<!-- DAILY_LOG_START -->\n(.*?)\n<!-- DAILY_LOG_END -->",
+              text,
+              flags=re.S,
+          )
+          if not m:
+              sys.exit("Daily log markers not found in README.md")
+
+          block = m.group(1).strip("\n")
+          lines = block.splitlines()
+          if len(lines) < 2:
+              sys.exit("Daily log header missing in README.md")
+
+          header = lines[:2]
+          data_lines = [line for line in lines[2:] if line.strip()]
+
+          updated = False
+          for i, line in enumerate(data_lines):
+              if line.startswith(f"| {os.environ['DATE_STR']} |"):
+                  data_lines[i] = new_row
+                  updated = True
+                  break
+
+          if not updated:
+              data_lines.insert(0, new_row)
+
+          data_lines = data_lines[:10]
+          new_block = "\n".join(header + data_lines)
+          text = text[: m.start(1)] + new_block + text[m.end(1) :]
+
+          if not text.endswith("\n"):
+              text += "\n"
+
+          readme_path.write_text(text)
+          PY
 
           echo "Updated README: $TOTAL_ARTICLES articles, $TOTAL_NEWSLETTERS newsletters, $TOTAL_SOCIAL social posts"
           echo "Today (${DATE_STR}): $TODAY_ARTICLES articles, $TODAY_NEWSLETTERS newsletters, $TODAY_SOCIAL social posts"
