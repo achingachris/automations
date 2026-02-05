@@ -173,9 +173,16 @@ jobs:
               flags=re.S,
           )
 
+          date_str = os.environ["DATE_STR"]
+          day, month, year = date_str.split("-")
+          articles_path = f"content/articles/{year}/{month}/{day}.md"
+          newsletters_path = f"content/newsletters/{year}/{month}/{day}.md"
+          social_path = f"content/social/{year}/{month}/{day}.md"
+
           new_row = (
-              f"| {os.environ['DATE_STR']} | {os.environ['TODAY_ARTICLES']} | "
-              f"{os.environ['TODAY_NEWSLETTERS']} | {os.environ['TODAY_SOCIAL']} |"
+              f"| {date_str} | [{os.environ['TODAY_ARTICLES']}]({articles_path}) | "
+              f"[{os.environ['TODAY_NEWSLETTERS']}]({newsletters_path}) | "
+              f"[{os.environ['TODAY_SOCIAL']}]({social_path}) |"
           )
 
           m = re.search(
@@ -191,7 +198,10 @@ jobs:
           if len(lines) < 2:
               sys.exit("Daily log header missing in README.md")
 
-          header = lines[:2]
+          header = [
+              "| Date | Articles | Newsletters | Social |",
+              "| --- | --- | --- | --- |",
+          ]
           data_lines = [line for line in lines[2:] if line.strip()]
 
           updated = False
