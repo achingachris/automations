@@ -1,6 +1,8 @@
 # Newsletter RSS feeds
 https://django-news.com/issues.rss
 https://pycoders.com/feed/PsawLTyI
+https://veldakiara.substack.com/
+https://alphasignal.ai/last-email
 
 # No RSS available:
 # https://syntax.fm/snackpack - podcast feed only
