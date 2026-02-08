@@ -2,7 +2,9 @@
 # Mastodon, Bluesky, and other social platform RSS feeds
 
 # Mastodon
-https://fosstodon.org/@Django.rss
+https://fosstodon.org/@Django
+https://mastodon.social/@pyconau@mastodon.pycon.org.au
+https://mastodon.social/@djangonews
 
 # No RSS available:
 # https://x.com/djangoproject - Twitter (no public RSS)
