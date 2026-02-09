@@ -1,5 +1,2 @@
-# Core dependencies for RSS feed scraping
 feedparser==6.0.12
-
-# feedparser's dependencies (automatically installed)
-# sgmllib3k - required by feedparser for parsing
+sgmllib3k==1.0.0
